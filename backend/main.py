@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Depends, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 import json
@@ -18,6 +19,15 @@ models.Base.metadata.create_all(bind=engine)
 
 # 创建FastAPI应用
 app = FastAPI(title="作息安排记录 API", version="1.0.0")
+
+# 添加CORS中间件
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # ==================== 活动相关接口 ====================
 
@@ -130,9 +140,8 @@ def update_user_settings(settings_update: schemas.UserSettingsBase, db: Session 
 def health_check():
     return {"status": "healthy", "timestamp": datetime.now().isoformat()}
 # ============ AI生成计划接口 ============
-
 @app.post("/api/ai/generate-plan")
-async def generate_ai_plan(db: Session = Depends(get_db)):
+async def generate_ai_plan(target: str = "tomorrow", preference: str = "", db: Session = Depends(get_db)):
     from datetime import datetime, timedelta
     
     today = datetime.now()
@@ -174,7 +183,7 @@ async def generate_ai_plan(db: Session = Depends(get_db)):
     
     try:
         # ========== 调用AI生成计划 ==========
-        ai_response = ai_service.generate_plan(activities_data, tomorrow_str)
+        ai_response = ai_service.generate_plan(activities_data, tomorrow_str, preference)
         print(f"AI返回内容:\n{ai_response}\n")
         
         # 尝试解析AI返回的JSON

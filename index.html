@@ -178,11 +178,28 @@
                         </div>
                     </div>
 
-                    <div class="flex">
-                        <input type="text" id="chatInput" class="flex-grow border border-gray-300 rounded-l-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-primary" placeholder="输入消息...">
-                        <button id="sendChat" class="bg-primary text-white px-4 py-2 rounded-r-md hover:bg-blue-600 transition">
-                            <i class="fa fa-paper-plane"></i>
-                        </button>
+                    <div class="flex flex-col gap-2">
+                        <div class="flex gap-2">
+                            <input type="text" id="chatInput" class="flex-grow border border-gray-300 rounded-l-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-primary" placeholder="输入消息...">
+                            <button id="sendChat" class="bg-primary text-white px-4 py-2 rounded-r-md hover:bg-blue-600 transition">
+                                <i class="fa fa-paper-plane"></i>
+                            </button>
+                        </div>
+                        <!-- ⭐ 发送方式选择 -->
+                        <div class="flex gap-2">
+                            <label class="flex items-center gap-2 px-4 py-2 rounded-xl cursor-pointer text-sm transition-all" style="background: linear-gradient(135deg, #FFE5B4, #FFD6A5); color: #8B5A2B; flex: 1; box-shadow: 0 2px 8px rgba(180,140,100,0.1);">
+                                <input type="radio" name="sendMode" value="chat" checked style="accent-color: #FF8C5A;">
+                                <span><i class="fa fa-comments mr-1"></i>聊天交流</span>
+                            </label>
+                            <label class="flex items-center gap-2 px-4 py-2 rounded-xl cursor-pointer text-sm transition-all" style="background: linear-gradient(135deg, #D4E4F7, #B8D4E8); color: #2C5F8D; flex: 1; box-shadow: 0 2px 8px rgba(180,140,100,0.1);">
+                                <input type="radio" name="sendMode" value="plan" style="accent-color: #FF8C5A;">
+                                <span><i class="fa fa-calendar mr-1"></i>明日计划</span>
+                            </label>
+                        </div>
+                        <!-- 选明日计划时的提示 -->
+                        <div id="planHint" class="text-xs hidden" style="color: #8B5A2B; background: linear-gradient(135deg, #FFF4E0, #FFE8CC); padding: 8px 12px; border-radius: 12px;">
+                            💡 输入你的偏好（如「明天要早睡，10点睡觉」「明天下午3点要健身」），AI会根据你的要求调整明天的计划并保存。
+                        </div>
                     </div>
                     <div class="quick-replies mb-2">
                         <button class="quick-reply-btn" onclick="sendQuickReply('帮我总结今天的作息')">📊 今日总结</button>
@@ -535,52 +552,97 @@
                 element.title = '📌 计划活动 - 点击确认转为正式活动';
             }
 
-            // 标题
+            // 标题（整个活动块区域都可点击，内部元素不拦截）
             const title = document.createElement('div');
-            title.className = 'font-medium text-sm truncate';
+            title.style.cssText = 'font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.3; pointer-events: none;';
             title.textContent = activity.title;
             element.appendChild(title);
 
-            // 时间
+            // 时间（整个活动块区域都可点击，内部元素不拦截）
             const time = document.createElement('div');
-            time.className = 'text-xs opacity-80 truncate';
+            time.style.cssText = 'font-size: 11px; opacity: 0.85; margin-top: 2px; line-height: 1.2; pointer-events: none;';
             time.textContent = `${activity.startTime} - ${activity.endTime}`;
             element.appendChild(time);
 
-            // AI计划提示
+            // 如果有备注，显示备注提示
+            if (activity.notes && activity.notes.trim() !== '' && !isPlan) {
+                const notesHint = document.createElement('div');
+                notesHint.style.cssText = 'font-size: 10px; opacity: 0.7; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none;';
+                const shortNotes = activity.notes.length > 20 ? activity.notes.substring(0, 20) + '...' : activity.notes;
+                notesHint.textContent = '📝 ' + shortNotes;
+                element.appendChild(notesHint);
+            }
+
+            // ====== ⭐ AI计划：单击确认转为正式活动 ⭐ ======
             if (isPlan) {
+                // 提示 badge
                 const badge = document.createElement('div');
-                badge.style.cssText = 'font-size: 10px; font-weight: bold; margin-top: 2px;';
-                badge.textContent = '📌 点击确认';
+                badge.style.cssText = 'font-size: 10px; font-weight: bold; margin-top: 3px; opacity: 0.9; pointer-events: none;';
+                badge.textContent = '📌 点击确认 / 长按拖拽';
                 element.appendChild(badge);
 
-                // ⭐ AI计划点击确认事件
+                // 单击确认
                 element.addEventListener('click', async function(e) {
                     e.stopPropagation();
-                    if (confirm(`确认将「${activity.title}」转为正式活动吗？`)) {
-                        try {
-                            const response = await fetch(
-                                `http://localhost:8000/api/activities/${activity.id}/confirm`,
-                                { method: 'PUT' }
-                            );
-                            if (!response.ok) throw new Error('确认失败');
 
-                            // 更新本地数据并刷新
-                            activity.isPlan = false;
-                            await loadActivities();
-                            renderCalendar();
-                        } catch (error) {
-                            alert('确认失败，请检查后端服务');
-                        }
+                    if (dragState.justDragged) {
+                        dragState.justDragged = false;
+                        return;
                     }
+
+                    console.log('点击确认计划活动:', activity.title, 'ID:', activity.id);
+
+                    showConfirmDialog(
+                        '确认转为正式活动？',
+                        `活动：<strong>${activity.title}</strong><br><span style="opacity:0.7; font-size:12px;">（提示：长按可拖拽移动）</span>`,
+                        async function() {
+                            try {
+                                const response = await fetch(
+                                    `http://localhost:8000/api/activities/${activity.id}/confirm`,
+                                    { method: 'PUT', headers: { 'Content-Type': 'application/json' } }
+                                );
+
+                                if (!response.ok) {
+                                    const errorText = await response.text();
+                                    console.error('服务器返回错误:', errorText);
+                                    throw new Error('服务器错误: ' + response.status);
+                                }
+
+                                await loadActivities();
+                                renderCalendar();
+                                updateStatistics();
+
+                            } catch (error) {
+                                console.error('确认失败:', error);
+                                showAlertDialog('操作失败', '请检查后端服务是否正常运行<br><br>详细信息：' + error.message, '❌');
+                            }
+                        },
+                        '确认转换',
+                        '📌'
+                    );
                 });
             }
 
-            // 双击编辑
+            // ⭐ 普通活动：单击打开编辑弹窗
+            if (!isPlan) {
+                element.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    
+                    if (dragState.justDragged) {
+                        dragState.justDragged = false;
+                        return;
+                    }
+                    
+                    showActivityModal(activity, activity.date, activity.startTime, activity.endTime);
+                });
+            }
+
+            // ⭐ 双击编辑（两者都支持）
             element.addEventListener('dblclick', function(e) {
                 e.stopPropagation();
                 showActivityModal(activity, activity.date, activity.startTime, activity.endTime);
             });
+
             // ⭐ 注册拖拽事件
             setupDragEvents(element, activity);
 
@@ -597,95 +659,110 @@
             startX: 0,
             startY: 0,
             dragStartTime: 0,
-            moved: false
+            moved: false,
+            justDragged: false
         };
 
         // 长按检测（超过 300ms 才视为拖拽，否则是普通点击）
         const LONG_PRESS_MS = 300;
 
-        // 给每个活动块添加拖拽事件（在 createActivityElement 内调用）
+        // 给每个活动块添加拖拽事件
         function setupDragEvents(element, activity) {
-            // 鼠标按下
+            // 鼠标按下 → 等待 300ms 或检测移动 → 进入拖拽模式
             element.addEventListener('mousedown', function(e) {
-                if (e.button !== 0) return; // 只处理左键
-                e.preventDefault();
-                e.stopPropagation();
+                if (e.button !== 0) return;
+                if (dragState.isDragging) return;
 
                 dragState.dragStartTime = Date.now();
                 dragState.startX = e.clientX;
                 dragState.startY = e.clientY;
                 dragState.draggingActivity = activity;
-                dragState.moved = false;
 
-                // 准备：延迟后进入拖拽模式
+                let dragStarted = false;
+                let cleanedUp = false;
+
                 const timer = setTimeout(() => {
+                    if (cleanedUp) return;
+                    dragStarted = true;
+                    cleanup();
                     startDrag(element, activity, e.clientX, e.clientY);
                 }, LONG_PRESS_MS);
 
-                // 鼠标移动（还没进入拖拽模式时，用于判断是否移动）
-                const onPreMove = (moveEvent) => {
+                const onMove = (moveEvent) => {
+                    if (dragStarted || cleanedUp) return;
                     const dx = Math.abs(moveEvent.clientX - dragState.startX);
                     const dy = Math.abs(moveEvent.clientY - dragState.startY);
-                    if (dx > 5 || dy > 5) {
-                        clearTimeout(timer);
-                        onPreMoveCleanup();
-                        // 快速移动也启动拖拽
+                    if (dx > 8 || dy > 8) {
+                        dragStarted = true;
+                        cleanup();
                         startDrag(element, activity, moveEvent.clientX, moveEvent.clientY);
                     }
                 };
 
-                // 鼠标松开（还没进入拖拽模式时，视为普通点击）
-                const onPreUp = (upEvent) => {
+                const onUp = () => {
+                    if (!dragStarted && !cleanedUp) {
+                        cleanup();
+                    }
+                };
+
+                const cleanup = () => {
+                    if (cleanedUp) return;
+                    cleanedUp = true;
                     clearTimeout(timer);
-                    onPreMoveCleanup();
-                    document.removeEventListener('mouseup', onPreUp);
+                    document.removeEventListener('mousemove', onMove);
+                    document.removeEventListener('mouseup', onUp);
                 };
 
-                const onPreMoveCleanup = () => {
-                    document.removeEventListener('mousemove', onPreMove);
-                };
-
-                document.addEventListener('mousemove', onPreMove);
-                document.addEventListener('mouseup', onPreUp);
+                document.addEventListener('mousemove', onMove);
+                document.addEventListener('mouseup', onUp);
             });
 
-            // 触摸设备支持（长按）
+            // 触摸设备
             element.addEventListener('touchstart', function(e) {
-                e.preventDefault();
                 const touch = e.touches[0];
                 dragState.dragStartTime = Date.now();
                 dragState.startX = touch.clientX;
                 dragState.startY = touch.clientY;
                 dragState.draggingActivity = activity;
-                dragState.moved = false;
+
+                let dragStarted = false;
+                let cleanedUp = false;
 
                 const timer = setTimeout(() => {
+                    if (cleanedUp) return;
+                    dragStarted = true;
+                    cleanup();
                     startDrag(element, activity, touch.clientX, touch.clientY);
                 }, LONG_PRESS_MS);
 
-                const onTouchMove = (moveEvent) => {
-                    const t = moveEvent.touches[0];
-                    const dx = Math.abs(t.clientX - dragState.startX);
-                    const dy = Math.abs(t.clientY - dragState.startY);
-                    if (dx > 5 || dy > 5) {
-                        clearTimeout(timer);
+                const onMove = (moveEvent) => {
+                    if (dragStarted || cleanedUp) return;
+                    const mt = moveEvent.touches[0];
+                    const dx = Math.abs(mt.clientX - dragState.startX);
+                    const dy = Math.abs(mt.clientY - dragState.startY);
+                    if (dx > 10 || dy > 10) {
+                        dragStarted = true;
                         cleanup();
-                        startDrag(element, activity, t.clientX, t.clientY);
+                        startDrag(element, activity, mt.clientX, mt.clientY);
                     }
                 };
 
-                const onTouchEnd = () => {
-                    clearTimeout(timer);
-                    cleanup();
+                const onEnd = () => {
+                    if (!dragStarted && !cleanedUp) {
+                        cleanup();
+                    }
                 };
 
                 const cleanup = () => {
-                    document.removeEventListener('touchmove', onTouchMove);
-                    document.removeEventListener('touchend', onTouchEnd);
+                    if (cleanedUp) return;
+                    cleanedUp = true;
+                    clearTimeout(timer);
+                    document.removeEventListener('touchmove', onMove);
+                    document.removeEventListener('touchend', onEnd);
                 };
 
-                document.addEventListener('touchmove', onTouchMove);
-                document.addEventListener('touchend', onTouchEnd);
+                document.addEventListener('touchmove', onMove);
+                document.addEventListener('touchend', onEnd);
             });
         }
 
@@ -812,7 +889,9 @@
             // 重置状态
             dragState.isDragging = false;
             dragState.ghostElement = null;
-
+            dragState.justDragged = true;   // ⭐ 新增：标记刚完成拖拽
+            // 200ms 后清除标记（给 click 事件一点缓冲时间）
+            setTimeout(() => { dragState.justDragged = false; }, 200);
             if (!targetCell || !activity) {
                 return; // 没有在有效区域松开，忽略
             }
@@ -881,7 +960,7 @@
             document.getElementById('dragCancelBtn').onclick = close;
             overlay.onclick = (e) => { if (e.target === overlay) close(); };
 
-            // ✅ 移动：修改数据库中该条目的时间和日期（原条目被修改，相当于删除原位置）
+            // ✅ 移动：修改数据库中该条目的时间和日期
             document.getElementById('dragMoveBtn').onclick = async function() {
                 close();
                 try {
@@ -894,25 +973,34 @@
                         notes: activity.notes || ''
                     };
 
+                    console.log('↔ 移动活动，发送数据:', activity.id, updatedActivity);
+
                     if (window.activityAPI) {
-                        await window.activityAPI.update(activity.id, updatedActivity);
+                        const result = await window.activityAPI.update(activity.id, updatedActivity);
+                        console.log('✅ 移动成功，服务器返回:', result);
+                    } else {
+                        console.warn('activityAPI 未找到，无法移动');
                     }
 
-                    // 重新加载数据 + 刷新日历
                     await loadActivities();
                     renderCalendar();
                 } catch (error) {
                     console.error('移动失败:', error);
-                    alert('移动失败，请检查后端服务');
+                    showAlertDialog('移动失败', '请检查后端服务是否正常运行<br><br>详细信息：' + error.message, '❌');
                 }
             };
 
             // ✅ 复制：保留原条目，创建新条目到数据库
+            // ✅ 复制：保留原条目，创建新条目到数据库（自动生成新 id）
             document.getElementById('dragCopyBtn').onclick = async function() {
                 close();
                 try {
+                    // 生成唯一 id（格式：copy-时间戳-随机数）
+                    const newId = 'copy-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+                    
                     const newActivity = {
-                        title: activity.title + ' (副本)',
+                        id: newId,   // ⭐ 必须传 id
+                        title: activity.title,
                         type: activity.type,
                         date: newDate,
                         start_time: newStartTime,
@@ -920,19 +1008,81 @@
                         notes: activity.notes || ''
                     };
 
+                    console.log('📋 复制活动，发送数据:', newActivity);
+
                     if (window.activityAPI) {
-                        await window.activityAPI.create(newActivity);
+                        const created = await window.activityAPI.create(newActivity);
+                        console.log('✅ 复制成功，服务器返回:', created);
+                    } else {
+                        console.warn('activityAPI 未找到，无法复制');
                     }
 
                     await loadActivities();
                     renderCalendar();
                 } catch (error) {
                     console.error('复制失败:', error);
-                    alert('复制失败，请检查后端服务');
+                    showAlertDialog('复制失败', '请检查后端服务是否正常运行<br><br>详细信息：' + error.message, '❌');
                 }
             };
         }
-        
+        // ============================================================
+        // 通用弹窗（替代原生 alert/confirm）
+        // ============================================================
+
+        /**
+         * 通用确认弹窗（替代原生 confirm）
+         */
+        function showConfirmDialog(title, message, onConfirm, confirmText = '确认', icon = '🤔') {
+            const overlay = document.createElement('div');
+            overlay.className = 'modal-overlay';
+
+            overlay.innerHTML = `
+                <div class="confirm-box">
+                    <div class="confirm-icon">${icon}</div>
+                    <div class="confirm-title">${title}</div>
+                    <div class="confirm-message">${message}</div>
+                    <div class="confirm-buttons">
+                        <button class="confirm-btn confirm-btn-cancel" id="customCancelBtn">取消</button>
+                        <button class="confirm-btn confirm-btn-ok" id="customConfirmBtn">${confirmText}</button>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(overlay);
+            const close = () => overlay.remove();
+
+            document.getElementById('customCancelBtn').onclick = close;
+            overlay.onclick = (e) => { if (e.target === overlay) close(); };
+            document.getElementById('customConfirmBtn').onclick = () => {
+                close();
+                onConfirm();
+            };
+        }
+
+        /**
+         * 通用消息弹窗（替代原生 alert）
+         */
+        function showAlertDialog(title, message, icon = '⚠️') {
+            const overlay = document.createElement('div');
+            overlay.className = 'modal-overlay';
+
+            overlay.innerHTML = `
+                <div class="confirm-box">
+                    <div class="confirm-icon">${icon}</div>
+                    <div class="confirm-title">${title}</div>
+                    <div class="confirm-message">${message}</div>
+                    <div class="confirm-buttons">
+                        <button class="confirm-btn confirm-btn-ok" id="customAlertOkBtn">知道了</button>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(overlay);
+            const close = () => overlay.remove();
+
+            overlay.onclick = (e) => { if (e.target === overlay) close(); };
+            document.getElementById('customAlertOkBtn').onclick = close;
+        }
         // 初始化周统计图表
         function initWeeklyChart() {
             const ctx = document.getElementById('weeklyChart').getContext('2d');
@@ -1268,7 +1418,20 @@
                 renderCalendar();
                 updateStatistics();
             });
-            
+            // ⭐ 发送方式切换：明日计划显示提示
+            document.querySelectorAll('input[name="sendMode"]').forEach(radio => {
+                radio.addEventListener('change', (e) => {
+                    const hint = document.getElementById('planHint');
+                    const input = document.getElementById('chatInput');
+                    if (e.target.value === 'plan') {
+                        hint.classList.remove('hidden');
+                        input.placeholder = '输入你的计划偏好（如「明天7点起床」「明天下午健身2小时」）...';
+                    } else {
+                        hint.classList.add('hidden');
+                        input.placeholder = '输入消息...';
+                    }
+                });
+            });
             // 添加活动按钮
             document.getElementById('addActivityBtn').addEventListener('click', () => {
                 // 默认添加今天的活动，时间为当前时间
@@ -1336,7 +1499,7 @@
 
                 // 验证时间
                 if (startTime >= endTime) {
-                    alert('结束时间必须晚于开始时间');
+                    showAlertDialog('时间错误', '结束时间必须晚于开始时间', '❌');
                     return;
                 }
 
@@ -1390,28 +1553,36 @@
                 document.getElementById('activityModal').classList.add('hidden');
             });
             
-            // 删除活动
+            // 删除活动（改用自定义弹窗 + 调用后端API）
             document.getElementById('deleteActivity').addEventListener('click', () => {
                 const id = document.getElementById('activityId').value;
-                
-                if (id && confirm('确定要删除这个活动吗？')) {
-                    activities = activities.filter(a => a.id !== id);
-                    
-                    // 保存活动
-                    saveActivities();
-                    
-                    // 重新渲染日历
-                    renderCalendar();
-                    
-                    // 更新统计信息
-                    updateStatistics();
-                    
-                    // 更新AI总结和计划
-                    updateAISummary();
-                    
-                    // 关闭模态框
-                    document.getElementById('activityModal').classList.add('hidden');
-                }
+
+                if (!id) return;
+
+                showConfirmDialog(
+                    '确定删除这个活动？',
+                    `活动将被永久删除，无法恢复`,
+                    async function() {
+                        try {
+                            if (window.activityAPI) {
+                                await window.activityAPI.delete(id);
+                            }
+
+                            await loadActivities();
+                            renderCalendar();
+                            updateStatistics();
+                            updateAISummary();
+
+                            document.getElementById('activityModal').classList.add('hidden');
+
+                        } catch (error) {
+                            console.error('删除失败:', error);
+                            showAlertDialog('删除失败', '请检查后端服务是否正常运行<br><br>详细信息：' + error.message, '❌');
+                        }
+                    },
+                    '确认删除',
+                    '🗑️'
+                );
             });
             
             // 刷新总结按钮
@@ -1638,49 +1809,108 @@
                 chatContainer.scrollTop = chatContainer.scrollHeight;
             }
         }
-                // 发送聊天消息
+                // 发送聊天消息（根据选择：聊天 / 明日计划）
         async function sendChatMessage() {
             const input = document.getElementById('chatInput');
             const message = input.value.trim();
-            
+
+            // ⭐ 获取当前选择的发送方式
+            const sendMode = document.querySelector('input[name="sendMode"]:checked').value;
+
             if (message) {
                 addChatMessage(message, 'user');
                 input.value = '';
-                
+
                 const chatContainer = document.getElementById('chatContainer');
                 chatContainer.scrollTop = chatContainer.scrollHeight;
-                
+
                 // 显示AI思考中
                 const thinkingId = 'thinking-' + Date.now();
                 addThinkingMessage(thinkingId);
                 chatContainer.scrollTop = chatContainer.scrollHeight;
-                
+
                 try {
-                    // ========== 调用后端的AI接口（推荐方式）
-                    const response = await fetch(
-                        'http://localhost:8000/api/ai/chat?message=' + encodeURIComponent(message),
-                        {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' }
+                    // ========== ⭐ 分支：明日计划 ==========
+                    if (sendMode === 'plan') {
+                        // 调用后端的明日计划生成接口（把用户输入作为自定义偏好）
+                        const response = await fetch(
+                            'http://localhost:8000/api/ai/generate-plan?target=tomorrow&preference=' + encodeURIComponent(message),
+                            {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' }
+                            }
+                        );
+
+                        if (!response.ok) {
+                            const error = await response.json();
+                            throw new Error(error.detail || '生成失败');
                         }
-                    );
-                    
-                    if (!response.ok) {
-                        throw new Error('AI服务请求失败');
+
+                        const result = await response.json();
+
+                        // 移除思考提示
+                        removeThinkingMessage(thinkingId);
+
+                        // 在聊天框显示AI生成结果
+                        let reply = `✅ 已根据你的要求生成并保存明天(${result.date})的计划！\n\n`;
+                        if (result.activities && result.activities.length > 0) {
+                            reply += `共生成 ${result.activities.length} 个活动安排：\n`;
+                            result.activities.forEach((act, i) => {
+                                reply += `${i + 1}. ${act.startTime}~${act.endTime} 「${act.title}」\n`;
+                            });
+                        } else if (result.message) {
+                            reply += result.message;
+                        }
+                        reply += '\n\n计划会以淡色虚线框显示在明天的日程表里，点击确认后转为正式活动。';
+
+                        addChatMessage(reply, 'ai');
+
+                        // 重新加载日历，显示新生成的计划
+                        await loadActivities();
+                        renderCalendar();
+                        updateStatistics();
+
+                        // 自动切回聊天模式，方便下次继续对话
+                        document.querySelector('input[name="sendMode"][value="chat"]').checked = true;
                     }
-                    
-                    const data = await response.json();
-                    removeThinkingMessage(thinkingId);
-                    addChatMessage(data.reply, 'ai');
-                    
+                    // ========== 默认：聊天交流 ==========
+                    else {
+                        // 调用后端的AI聊天接口
+                        const response = await fetch(
+                            'http://localhost:8000/api/ai/chat?message=' + encodeURIComponent(message),
+                            {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' }
+                            }
+                        );
+
+                        if (!response.ok) {
+                            throw new Error('请求失败');
+                        }
+
+                        const data = await response.json();
+
+                        // 移除思考提示
+                        removeThinkingMessage(thinkingId);
+
+                        // 显示AI回复
+                        addChatMessage(data.reply || data.message || data, 'ai');
+                    }
+
+                    chatContainer.scrollTop = chatContainer.scrollHeight;
+
                 } catch (error) {
+                    console.error('发送失败:', error);
                     removeThinkingMessage(thinkingId);
-                    // 失败时降级使用模拟回复
-                    const fallback = generateMockReply(message);
-                    addChatMessage('（当前使用模拟回复） ' + fallback, 'ai');
+
+                    // 根据错误类型给不同提示
+                    const hintMsg = sendMode === 'plan'
+                        ? '生成明日计划失败，请检查后端服务是否正常运行。\n\n详细信息：' + error.message
+                        : '发送失败，正在使用本地规则回复。请稍后重试。\n\n详细信息：' + error.message;
+
+                    addChatMessage(hintMsg, 'ai');
+                    chatContainer.scrollTop = chatContainer.scrollHeight;
                 }
-                
-                chatContainer.scrollTop = chatContainer.scrollHeight;
             }
         }
 

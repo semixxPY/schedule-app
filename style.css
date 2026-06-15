@@ -91,52 +91,76 @@ div.bg-white.rounded-lg.shadow-sm {
     padding: 12px;
     min-height: auto !important;
 }
-/* ---------- 修复：日历格子作为活动块的定位容器 ---------- */
+/* ---------- 日历格子：定位容器（默认不拦截点击，让活动块能被点到） ---------- */
 .calendar-cell {
-    position: relative;   /* ⭐ 关键：让活动块以这个格子为定位基准 */
-    overflow: visible;    /* 允许活动块跨越多格显示（比如 9:00-10:30 的活动跨两格） */
+    position: relative !important;
+    overflow: visible !important;
     z-index: 1;
+    pointer-events: none !important;   /* ⭐ 默认：不拦截点击，让活动块可以被点到 */
 }
 
-/* ---------- 日历活动块（只改外观，不改动 JS 计算的位置/宽度） ---------- */
+/* ⭐ 拖拽模式下：临时让格子能被 elementsFromPoint 找到 */
+body.dragging-mode .calendar-cell {
+    pointer-events: auto !important;
+}
+
+/* ---------- 日历活动块：整个区域都可点击 ---------- */
 #calendar .activity-block {
-    /* left/top/width/height 完全由 JS 计算，CSS 不覆盖 */
     border-radius: 14px !important;
-    padding: 4px 8px !important;
+    padding: 6px 10px !important;
     font-weight: 700;
     font-size: 12px;
     box-shadow: 0 3px 10px rgba(180, 140, 100, 0.15);
     overflow: hidden;
     transition: transform 0.15s ease, box-shadow 0.15s ease;
-    cursor: grab;
-    box-sizing: border-box;  /* ⭐ 防止 padding 撑大宽度 */
-}
-#calendar .activity-block:hover {
-    transform: translateY(-1px) scale(1.01);
-    box-shadow: 0 6px 18px rgba(180, 140, 100, 0.22);
-}
-/* ---------- 日历活动块（只改外观，不改动位置/宽度） ---------- */
-#calendar .activity-block {
-    /* 位置和宽度由 JS 计算，CSS 不覆盖 left/top/width/height */
-    border-radius: 14px !important;
-    padding: 4px 8px !important;
-    font-weight: 700;
-    font-size: 12px;
-    box-shadow: 0 3px 10px rgba(180, 140, 100, 0.15);
-    overflow: hidden;
-    transition: all 0.15s ease;
-    cursor: grab;
-    margin-left: 4px;   /* 左间距，避免贴边 */
-    margin-right: 4px;  /* 右间距 */
-}
-#calendar .activity-block:hover {
-    transform: translateY(-1px) scale(1.01);
-    box-shadow: 0 6px 18px rgba(180, 140, 100, 0.22);
+    cursor: grab !important;
+    box-sizing: border-box;
+    display: block !important;
+    pointer-events: auto !important;      /* ⭐ 活动块始终能被点到 */
+    user-select: none;
+    -webkit-user-select: none;
+    margin: 0 !important;
+    position: absolute !important;
 }
 
+/* 活动块内部的子元素不拦截点击事件（让 click 事件统一由父元素接收） */
+#calendar .activity-block > * {
+    pointer-events: none !important;
+}
+
+/* 活动块悬停效果 */
 #calendar .activity-block:hover {
     transform: translateY(-1px) scale(1.01);
     box-shadow: 0 6px 18px rgba(180, 140, 100, 0.22);
+    cursor: grab !important;
+}
+
+/* 计划活动（淡色虚线） */
+#calendar .activity-block[style*="opacity"] {
+    opacity: 0.65 !important;
+    border: 2px dashed rgba(255, 255, 255, 0.7) !important;
+}
+
+/* ---------- 拖拽相关样式 ---------- */
+.activity-block.dragging {
+    opacity: 0.3 !important;
+    transform: scale(0.95);
+    z-index: 100 !important;
+}
+
+.drag-ghost {
+    position: fixed;
+    z-index: 9999;
+    border-radius: 16px;
+    border: 3px dashed;
+    opacity: 0.6;
+    pointer-events: none !important;
+    box-shadow: 0 8px 24px rgba(180, 140, 100, 0.3);
+}
+
+body.dragging-mode {
+    cursor: grabbing !important;
+    user-select: none !important;
 }
 
 /* 活动类型颜色（奶油马卡龙色） */
@@ -489,4 +513,57 @@ body.dragging-mode { cursor: grabbing !important; user-select: none; }
     body { padding: 10px; }
     main { flex-direction: column !important; }
     main > div { width: 100% !important; margin: 8px !important; padding: 16px !important; height: auto !important; }
+}
+/* ========== AI思考中提示动画 ========== */
+.thinking {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: #8B5A2B;
+    font-weight: 600;
+}
+
+.thinking-dots {
+    display: inline-flex;
+    gap: 4px;
+    align-items: center;
+}
+
+/* 三个跳动的点 */
+.thinking-dots span {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    background: linear-gradient(135deg, #FFB085, #FF8C5A);
+    border-radius: 50%;
+    opacity: 0.5;
+    animation: thinking-bounce 1.4s ease-in-out infinite;
+    box-shadow: 0 2px 6px rgba(255, 140, 90, 0.3);
+}
+
+/* 第1个点 - 0s 开始 */
+.thinking-dots span:nth-child(1) {
+    animation-delay: 0s;
+}
+
+/* 第2个点 - 0.2s 开始 */
+.thinking-dots span:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+/* 第3个点 - 0.4s 开始 */
+.thinking-dots span:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+/* 关键帧：从淡→亮→淡的循环 */
+@keyframes thinking-bounce {
+    0%, 80%, 100% {
+        opacity: 0.3;
+        transform: scale(0.6);
+    }
+    40% {
+        opacity: 1;
+        transform: scale(1);
+    }
 }
