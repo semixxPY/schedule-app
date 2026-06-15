@@ -1,0 +1,492 @@
+/* ============================================================
+   奶油奶fufu风 · Cream & Milk-fufu Style
+   适配 Tailwind 风格的类名
+   ============================================================ */
+
+* { box-sizing: border-box; }
+
+/* ---------- 全局背景 ---------- */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", "Hiragino Sans", "Helvetica Neue", sans-serif;
+    background: linear-gradient(135deg, #FFF8F0 0%, #FFE8D6 45%, #FFDAB9 100%) !important;
+    min-height: 100vh;
+    color: #5D4037;
+    font-weight: 500;
+    margin: 0;
+    letter-spacing: 0.3px;
+}
+
+body.bg-gray-50 {
+    background: linear-gradient(135deg, #FFF8F0 0%, #FFE8D6 45%, #FFDAB9 100%) !important;
+}
+
+h1, h2, h3, h4 {
+    font-weight: 800;
+    color: #8B5A2B;
+    letter-spacing: 0.5px;
+}
+
+/* ---------- 顶部导航栏 ---------- */
+header.bg-white {
+    background: rgba(255, 251, 245, 0.95) !important;
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(255, 228, 196, 0.6) !important;
+    box-shadow: 0 2px 12px rgba(180, 140, 100, 0.08) !important;
+}
+
+header h1.text-primary {
+    color: #8B5A2B !important;
+}
+
+header button.p-2 {
+    background: transparent !important;
+    border-radius: 20px !important;
+    transition: all 0.2s ease;
+}
+header button.p-2:hover {
+    background: rgba(255, 214, 165, 0.5) !important;
+}
+
+#addActivityBtn, header #settingsBtn {
+    background: linear-gradient(135deg, #FFD6A5, #FFB085) !important;
+    color: #5D4037 !important;
+    border-radius: 16px !important;
+    padding: 8px 16px !important;
+    font-weight: 700;
+    box-shadow: 0 3px 10px rgba(255, 176, 133, 0.25);
+    transition: all 0.2s ease;
+}
+#addActivityBtn:hover, header #settingsBtn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(255, 176, 133, 0.35);
+}
+
+#prevWeek, #nextWeek {
+    background: rgba(255, 214, 165, 0.3) !important;
+    border-radius: 16px !important;
+}
+#prevWeek:hover, #nextWeek:hover {
+    background: rgba(255, 214, 165, 0.6) !important;
+}
+
+#currentWeek {
+    color: #8B5A2B !important;
+    font-weight: 800;
+}
+
+/* ---------- 中间日历面板（主面板） ---------- */
+div.bg-white.rounded-lg.shadow-sm {
+    background: rgba(255, 251, 245, 0.85) !important;
+    backdrop-filter: blur(20px);
+    border-radius: 28px !important;
+    padding: 20px !important;
+    box-shadow: 0 10px 40px rgba(180, 140, 100, 0.12), 0 2px 6px rgba(180, 140, 100, 0.06) !important;
+    border: 1px solid rgba(255, 228, 196, 0.6) !important;
+    margin-bottom: 16px;
+}
+
+.calendar-container {
+    background: rgba(255, 248, 240, 0.6) !important;
+    border-radius: 20px;
+    padding: 12px;
+    min-height: auto !important;
+}
+/* ---------- 修复：日历格子作为活动块的定位容器 ---------- */
+.calendar-cell {
+    position: relative;   /* ⭐ 关键：让活动块以这个格子为定位基准 */
+    overflow: visible;    /* 允许活动块跨越多格显示（比如 9:00-10:30 的活动跨两格） */
+    z-index: 1;
+}
+
+/* ---------- 日历活动块（只改外观，不改动 JS 计算的位置/宽度） ---------- */
+#calendar .activity-block {
+    /* left/top/width/height 完全由 JS 计算，CSS 不覆盖 */
+    border-radius: 14px !important;
+    padding: 4px 8px !important;
+    font-weight: 700;
+    font-size: 12px;
+    box-shadow: 0 3px 10px rgba(180, 140, 100, 0.15);
+    overflow: hidden;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    cursor: grab;
+    box-sizing: border-box;  /* ⭐ 防止 padding 撑大宽度 */
+}
+#calendar .activity-block:hover {
+    transform: translateY(-1px) scale(1.01);
+    box-shadow: 0 6px 18px rgba(180, 140, 100, 0.22);
+}
+/* ---------- 日历活动块（只改外观，不改动位置/宽度） ---------- */
+#calendar .activity-block {
+    /* 位置和宽度由 JS 计算，CSS 不覆盖 left/top/width/height */
+    border-radius: 14px !important;
+    padding: 4px 8px !important;
+    font-weight: 700;
+    font-size: 12px;
+    box-shadow: 0 3px 10px rgba(180, 140, 100, 0.15);
+    overflow: hidden;
+    transition: all 0.15s ease;
+    cursor: grab;
+    margin-left: 4px;   /* 左间距，避免贴边 */
+    margin-right: 4px;  /* 右间距 */
+}
+#calendar .activity-block:hover {
+    transform: translateY(-1px) scale(1.01);
+    box-shadow: 0 6px 18px rgba(180, 140, 100, 0.22);
+}
+
+#calendar .activity-block:hover {
+    transform: translateY(-1px) scale(1.01);
+    box-shadow: 0 6px 18px rgba(180, 140, 100, 0.22);
+}
+
+/* 活动类型颜色（奶油马卡龙色） */
+[class*="bg-primary"],
+.bg-primary {
+    background: linear-gradient(135deg, #FFE5B4, #FFD6A5) !important;
+    color: #8B5A2B !important;
+}
+.bg-secondary {
+    background: linear-gradient(135deg, #D4E4F7, #B8D4E8) !important;
+    color: #2C5F8D !important;
+}
+.bg-accent {
+    background: linear-gradient(135deg, #D4F4DD, #B8E8C5) !important;
+    color: #3D7A4D !important;
+}
+.bg-neutral {
+    background: linear-gradient(135deg, #F4D4E0, #E8C5D4) !important;
+    color: #A64D79 !important;
+}
+
+/* 计划活动（淡色半透明） */
+.activity-block[style*="opacity"] {
+    opacity: 0.65 !important;
+    border: 2px dashed rgba(255, 255, 255, 0.7) !important;
+}
+
+/* ---------- 本周统计面板 ---------- */
+.mt-4.bg-white.rounded-lg.shadow-sm.p-4 {
+    background: rgba(255, 251, 245, 0.85) !important;
+    backdrop-filter: blur(20px);
+    border-radius: 28px !important;
+    padding: 24px !important;
+    box-shadow: 0 10px 40px rgba(180, 140, 100, 0.12) !important;
+    border: 1px solid rgba(255, 228, 196, 0.6) !important;
+}
+.mt-4.bg-white.rounded-lg.shadow-sm.p-4 h3 {
+    color: #8B5A2B !important;
+    font-weight: 800;
+    font-size: 18px;
+    margin-bottom: 16px !important;
+}
+
+#studyWorkTime, #restTime, #exerciseTime, #dailyTasksTime, #totalTime {
+    color: #8B5A2B !important;
+    font-weight: 800;
+}
+
+/* ---------- 右侧 AI 助手面板（跟日程面板高度一致、可滚动） ---------- */
+main {
+    align-items: stretch;  /* ⭐ 让左右两列自动等高 */
+}
+
+main > div:last-child,
+.md\:w-5\/12,
+.lg\:w-1\/4 {
+    background: rgba(255, 251, 245, 0.85) !important;
+    backdrop-filter: blur(20px);
+    border-radius: 28px !important;
+    padding: 24px !important;
+    box-shadow: 0 10px 40px rgba(180, 140, 100, 0.12), 0 2px 6px rgba(180, 140, 100, 0.06) !important;
+    border: 1px solid rgba(255, 228, 196, 0.6) !important;
+    margin: 16px !important;
+    /* ⭐ 关键：跟左侧日历面板高度保持一致 */
+    height: auto !important;
+    min-height: 600px;
+    max-height: calc(100vh - 140px) !important;  /* 最大高度为视口高度减去顶部导航的空间 */
+    /* ⭐ 可滚动 */
+    overflow-y: auto !important;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+main > div:last-child h2,
+main > div:last-child h3 {
+    color: #8B5A2B !important;
+}
+
+#dailySummary,
+.bg-gray-50.rounded-lg.p-4,
+.bg-gray-50.rounded-lg.p-3 {
+    background: linear-gradient(135deg, #FFF4E0, #FFE8CC) !important;
+    border-radius: 20px !important;
+    color: #8B5A2B !important;
+    border: 1px solid rgba(255, 228, 196, 0.5) !important;
+    box-shadow: inset 0 2px 8px rgba(180, 140, 100, 0.06);
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.p-3.bg-blue-50.rounded-lg.border.border-blue-200 {
+    background: linear-gradient(135deg, #FFF4E0, #FFECD2) !important;
+    border-radius: 20px !important;
+    border: 1px solid rgba(255, 214, 165, 0.6) !important;
+    box-shadow: 0 2px 8px rgba(180, 140, 100, 0.08);
+}
+.p-3.bg-blue-50.rounded-lg.border.border-blue-200 h3,
+.text-blue-800 {
+    color: #8B5A2B !important;
+}
+.p-3.bg-blue-50.rounded-lg.border.border-blue-200 p {
+    color: #6B4226 !important;
+}
+
+/* 生成明日计划按钮 */
+#generatePlanBtn,
+#refreshSummary {
+    background: linear-gradient(135deg, #FFD6A5, #FFB085) !important;
+    color: #5D4037 !important;
+    border-radius: 16px !important;
+    padding: 10px 20px !important;
+    font-weight: 800 !important;
+    box-shadow: 0 4px 14px rgba(255, 176, 133, 0.25) !important;
+    transition: all 0.2s ease !important;
+    border: none !important;
+}
+#generatePlanBtn:hover,
+#refreshSummary:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 8px 22px rgba(255, 176, 133, 0.35) !important;
+}
+
+#planStatus {
+    background: linear-gradient(135deg, #FFF4E0, #FFE8CC);
+    border-radius: 16px;
+    padding: 12px 16px;
+    color: #8B5A2B;
+    font-weight: 600;
+    margin-top: 12px;
+}
+
+/* 聊天区域 */
+#chatContainer {
+    background: linear-gradient(180deg, rgba(255, 244, 224, 0.6), rgba(255, 255, 255, 0.6)) !important;
+    border-radius: 20px !important;
+    padding: 16px !important;
+    border: 1px solid rgba(255, 228, 196, 0.5) !important;
+    box-shadow: inset 0 2px 8px rgba(180, 140, 100, 0.06);
+}
+
+.chat-message {
+    margin-bottom: 10px;
+    padding: 10px 14px;
+    border-radius: 16px;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.6;
+}
+.chat-message.user {
+    background: linear-gradient(135deg, #FFD6A5, #FFB085);
+    color: #5D4037;
+    margin-left: 20%;
+    box-shadow: 0 3px 10px rgba(255, 176, 133, 0.2);
+}
+.chat-message.ai {
+    background: linear-gradient(135deg, #FFFFFF, #FFF8F0);
+    color: #5D4037;
+    margin-right: 20%;
+    box-shadow: 0 3px 10px rgba(180, 140, 100, 0.08);
+    border: 1px solid rgba(255, 228, 196, 0.5);
+}
+
+#chatInput {
+    background: #FFFBF5 !important;
+    border: 2px solid #FFE4C4 !important;
+    border-radius: 16px !important;
+    padding: 10px 14px !important;
+    color: #5D4037 !important;
+    outline: none !important;
+    transition: all 0.2s ease;
+    font-weight: 500;
+}
+#chatInput:focus {
+    border-color: #FFB085 !important;
+    background: #FFFFFF !important;
+    box-shadow: 0 0 0 4px rgba(255, 176, 133, 0.15);
+}
+#sendChat {
+    background: linear-gradient(135deg, #FFB085, #FF8C5A) !important;
+    color: #FFFFFF !important;
+    border-radius: 16px !important;
+    padding: 10px 20px !important;
+    font-weight: 800 !important;
+    box-shadow: 0 4px 14px rgba(255, 140, 90, 0.3) !important;
+    border: none !important;
+    transition: all 0.2s ease !important;
+}
+#sendChat:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 8px 22px rgba(255, 140, 90, 0.4) !important;
+}
+
+.quick-reply-btn {
+    background: linear-gradient(135deg, #FFECD2, #FFE4C4) !important;
+    color: #8B5A2B !important;
+    border-radius: 16px !important;
+    padding: 6px 12px !important;
+    font-size: 12px !important;
+    font-weight: 700 !important;
+    margin: 4px 4px 4px 0 !important;
+    box-shadow: 0 2px 8px rgba(180, 140, 100, 0.08) !important;
+    border: 1px solid rgba(255, 228, 196, 0.5) !important;
+    transition: all 0.2s ease !important;
+    cursor: pointer;
+}
+.quick-reply-btn:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 12px rgba(180, 140, 100, 0.15) !important;
+    background: linear-gradient(135deg, #FFD6A5, #FFB085) !important;
+}
+
+/* ---------- 模态框（添加活动） ---------- */
+#activityModal > div,
+.bg-white.rounded-lg.shadow-lg.w-full.max-w-md.p-6 {
+    background: linear-gradient(135deg, #FFFBF5, #FFF4E0) !important;
+    border-radius: 28px !important;
+    padding: 28px !important;
+    box-shadow: 0 20px 60px rgba(120, 80, 50, 0.25), 0 4px 12px rgba(120, 80, 50, 0.1) !important;
+    border: 1px solid rgba(255, 228, 196, 0.7) !important;
+}
+
+#activityModal h3 {
+    color: #8B5A2B !important;
+    font-size: 20px !important;
+    font-weight: 800 !important;
+}
+
+#activityModal label {
+    color: #8B5A2B !important;
+    font-weight: 700 !important;
+    font-size: 13px;
+}
+
+#activityModal input,
+#activityModal select,
+#activityModal textarea,
+.border.border-gray-300 {
+    background: #FFFBF5 !important;
+    border: 2px solid #FFE4C4 !important;
+    border-radius: 16px !important;
+    padding: 10px 14px !important;
+    color: #5D4037 !important;
+    font-weight: 500;
+    outline: none !important;
+    transition: all 0.2s ease;
+    width: 100%;
+}
+#activityModal input:focus,
+#activityModal select:focus,
+#activityModal textarea:focus {
+    border-color: #FFB085 !important;
+    background: #FFFFFF !important;
+    box-shadow: 0 0 0 4px rgba(255, 176, 133, 0.15);
+}
+
+#activityModal button.bg-primary,
+#activityModal button[type="submit"] {
+    background: linear-gradient(135deg, #FFB085, #FF8C5A) !important;
+    color: #FFFFFF !important;
+    border-radius: 16px !important;
+    padding: 10px 24px !important;
+    font-weight: 800 !important;
+    box-shadow: 0 4px 14px rgba(255, 140, 90, 0.3) !important;
+    border: none !important;
+    transition: all 0.2s ease !important;
+}
+#activityModal button.bg-primary:hover,
+#activityModal button[type="submit"]:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 8px 22px rgba(255, 140, 90, 0.4) !important;
+}
+
+#activityModal button.bg-gray-300,
+#closeModal {
+    background: linear-gradient(135deg, #FFE4C4, #FFD6A5) !important;
+    color: #8B5A2B !important;
+    border-radius: 16px !important;
+    padding: 8px 16px !important;
+    font-weight: 700 !important;
+    box-shadow: 0 3px 10px rgba(180, 140, 100, 0.12) !important;
+    border: none !important;
+    transition: all 0.2s ease !important;
+}
+
+/* 确认弹窗 */
+.modal-overlay {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(120, 80, 50, 0.35);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+.confirm-box {
+    background: linear-gradient(135deg, #FFFBF5, #FFF4E0);
+    border-radius: 32px;
+    padding: 32px;
+    width: 90%;
+    max-width: 480px;
+    box-shadow: 0 20px 60px rgba(120, 80, 50, 0.25);
+    border: 1px solid rgba(255, 228, 196, 0.7);
+}
+.confirm-title {
+    font-size: 22px;
+    color: #8B5A2B;
+    text-align: center;
+    font-weight: 800;
+    margin-bottom: 12px;
+}
+.confirm-icon { font-size: 56px; text-align: center; margin-bottom: 8px; }
+.confirm-message { font-size: 14px; color: #8B5A2B; line-height: 1.8; text-align: center; }
+.confirm-buttons { display: flex; gap: 12px; justify-content: center; margin-top: 24px; flex-wrap: wrap; }
+.confirm-btn {
+    padding: 12px 28px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 800;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.confirm-btn-ok { background: linear-gradient(135deg, #FFB085, #FF8C5A); color: #FFFFFF; box-shadow: 0 4px 14px rgba(255, 140, 90, 0.3); }
+.confirm-btn-ok:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(255, 140, 90, 0.4); }
+.confirm-btn-cancel { background: linear-gradient(135deg, #FFE4C4, #FFD6A5); color: #8B5A2B; box-shadow: 0 4px 14px rgba(180, 140, 100, 0.12); }
+.confirm-btn-cancel:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(180, 140, 100, 0.2); }
+
+/* ---------- 拖拽相关 ---------- */
+.activity-block.dragging { opacity: 0.3; transform: scale(0.95); z-index: 999; }
+.drag-ghost { position: absolute; border: 2px dashed; border-radius: 18px; pointer-events: none; opacity: 0.65; z-index: 100; }
+body.dragging-mode { cursor: grabbing !important; user-select: none; }
+
+/* ---------- 滚动条美化 ---------- */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: rgba(255, 228, 196, 0.3); border-radius: 10px; }
+::-webkit-scrollbar-thumb { background: linear-gradient(135deg, #FFD6A5, #FFB085); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: linear-gradient(135deg, #FFB085, #FF8C5A); }
+
+/* ---------- 覆盖灰色背景/边框/文字 ---------- */
+.bg-gray-100, .bg-gray-50 { background: linear-gradient(135deg, #FFF4E0, #FFE8CC) !important; }
+.bg-black\/50, .bg-black.bg-opacity-50 { background: rgba(120, 80, 50, 0.35) !important; backdrop-filter: blur(8px); }
+.text-gray-500, .text-gray-600, .text-gray-700, .text-gray-800 { color: #8B5A2B !important; }
+.border-gray-200, .border-gray-300 { border-color: rgba(255, 228, 196, 0.6) !important; }
+
+/* ---------- 响应式 ---------- */
+@media (max-width: 768px) {
+    body { padding: 10px; }
+    main { flex-direction: column !important; }
+    main > div { width: 100% !important; margin: 8px !important; padding: 16px !important; height: auto !important; }
+}

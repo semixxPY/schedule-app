@@ -1,0 +1,2109 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>硕博作息安排记录</title>
+    <!-- Tailwind CSS v3 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+    
+    <!-- Tailwind 配置 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3B82F6', // 蓝色 - 主色调
+                        secondary: '#10B981', // 绿色 - 休息
+                        accent: '#F59E0B', // 橙色 - 运动/娱乐
+                        neutral: '#6B7280', // 灰色 - 通勤/家务/吃饭
+                        dark: '#1F2937',
+                        light: '#F9FAFB'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                    gridTemplateColumns: {
+                        'calendar': '60px repeat(7, 1fr)',
+                    },
+                    gridTemplateRows: {
+                        'calendar': '40px repeat(24, 60px)',
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="style.css">
+    
+</head>
+<body class="bg-gray-50 font-sans">
+    <div class="min-h-screen flex flex-col">
+        <!-- 顶部导航栏 -->
+        <header class="bg-white shadow-sm">
+            <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+                <div class="flex items-center space-x-4">
+                    <h1 class="text-xl font-bold text-primary">硕博作息安排</h1>
+                    <div class="flex items-center space-x-2">
+                        <button id="prevWeek" class="p-2 rounded-full hover:bg-gray-100">
+                            <i class="fa fa-chevron-left text-gray-600"></i>
+                        </button>
+                        <h2 id="currentWeek" class="text-lg font-medium"></h2>
+                        <button id="nextWeek" class="p-2 rounded-full hover:bg-gray-100">
+                            <i class="fa fa-chevron-right text-gray-600"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button id="addActivityBtn" class="flex items-center space-x-1 px-3 py-1.5 bg-primary text-white rounded-md hover:bg-blue-600 transition">
+                        <i class="fa fa-plus"></i>
+                        <span>添加活动</span>
+                    </button>
+                    <button id="settingsBtn" class="p-2 rounded-full hover:bg-gray-100">
+                        <i class="fa fa-cog text-gray-600"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+        
+        <!-- 主内容区 -->
+        <main class="flex-grow flex flex-col md:flex-row">
+            <!-- 左侧日历视图 -->
+            <div class="w-full md:w-7/12 lg:w-3/4 p-4 overflow-auto" style="height: calc(100vh - 64px);">
+                <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+                    <div class="calendar-container overflow-auto" style="min-height: 1440px;">
+                        <div id="calendar" class="grid grid-cols-calendar grid-rows-calendar">
+                            <!-- 日历内容将通过JavaScript动态生成 -->
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 底部统计信息 -->
+                <div class="mt-4 bg-white rounded-lg shadow-sm p-4">
+                    <h3 class="text-lg font-medium mb-3">本周统计</h3>
+                    <div class="flex flex-wrap">
+                        <div class="w-full md:w-1/2">
+                            <canvas id="weeklyChart" height="200"></canvas>
+                        </div>
+                        <div class="w-full md:w-1/2 pl-0 md:pl-4 mt-4 md:mt-0">
+                            <div class="space-y-2">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center">
+                                        <div class="w-3 h-3 rounded-full bg-primary mr-2"></div>
+                                        <span>学习/工作</span>
+                                    </div>
+                                    <span id="studyWorkTime" class="font-medium">0小时</span>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center">
+                                        <div class="w-3 h-3 rounded-full bg-secondary mr-2"></div>
+                                        <span>休息</span>
+                                    </div>
+                                    <span id="restTime" class="font-medium">0小时</span>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center">
+                                        <div class="w-3 h-3 rounded-full bg-accent mr-2"></div>
+                                        <span>运动/娱乐</span>
+                                    </div>
+                                    <span id="exerciseTime" class="font-medium">0小时</span>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center">
+                                        <div class="w-3 h-3 rounded-full bg-neutral mr-2"></div>
+                                        <span>通勤/家务/吃饭</span>
+                                    </div>
+                                    <span id="dailyTasksTime" class="font-medium">0小时</span>
+                                </div>
+                                <div class="border-t border-gray-200 mt-2 pt-2">
+                                    <div class="flex items-center justify-between">
+                                        <span class="font-medium">总计</span>
+                                        <span id="totalTime" class="font-bold">0小时</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 右侧AI助手面板 -->
+            <div class="w-full md:w-5/12 lg:w-1/4 bg-white border-l border-gray-200 p-4 overflow-auto" style="height: calc(100vh - 64px);">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold text-primary flex items-center">
+                        <i class="fa fa-robot mr-2"></i>
+                        AI助手
+                    </h2>
+                    <button id="refreshSummary" class="p-2 rounded-full hover:bg-gray-100">
+                        <i class="fa fa-refresh text-gray-600"></i>
+                    </button>
+                </div>
+                
+                <!-- 每日总结 -->
+                <div class="mb-6">
+                    <h3 class="text-lg font-medium mb-2 flex items-center">
+                        <i class="fa fa-calendar-check-o mr-2 text-primary"></i>
+                        <span id="summaryDate">今日总结</span>
+                    </h3>
+                    <div id="dailySummary" class="bg-gray-50 rounded-lg p-4 text-gray-700">
+                        今天还没有记录活动，开始添加你的第一个活动吧！
+                    </div>
+                </div>
+                
+                                <!-- AI计划生成区域 -->
+                <div class="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <h3 class="text-lg font-medium mb-2 flex items-center text-blue-800">
+                        <i class="fa fa-calendar-check-o mr-2"></i>
+                        AI智能计划
+                    </h3>
+                    <p class="text-sm text-gray-600 mb-2">根据你过去一周的作息数据，AI帮你生成明天的计划安排</p>
+                    <button id="generatePlanBtn" class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition flex items-center justify-center">
+                        <i class="fa fa-magic mr-2"></i>
+                        生成明天的计划
+                    </button>
+                    <div id="planStatus" class="mt-2 text-sm hidden"></div>
+                </div>
+                <!-- 聊天界面 -->
+                <div>
+                    <h3 class="text-lg font-medium mb-2 flex items-center">
+                        <i class="fa fa-comments mr-2 text-primary"></i>
+                        与AI交流
+                    </h3>
+                    <div id="chatContainer" class="bg-gray-50 rounded-lg p-3 h-64 overflow-y-auto mb-3">
+                        <div class="chat-message ai">
+                            你好！我是你的AI助手，可以帮你分析作息安排并提供建议。有什么我能帮你的吗？
+                        </div>
+                    </div>
+
+                    <div class="flex">
+                        <input type="text" id="chatInput" class="flex-grow border border-gray-300 rounded-l-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-primary" placeholder="输入消息...">
+                        <button id="sendChat" class="bg-primary text-white px-4 py-2 rounded-r-md hover:bg-blue-600 transition">
+                            <i class="fa fa-paper-plane"></i>
+                        </button>
+                    </div>
+                    <div class="quick-replies mb-2">
+                        <button class="quick-reply-btn" onclick="sendQuickReply('帮我总结今天的作息')">📊 今日总结</button>
+                        <button class="quick-reply-btn" onclick="sendQuickReply('给我明日计划建议')">📅 明日计划</button>
+                        <button class="quick-reply-btn" onclick="sendQuickReply('如何提高工作效率')">💡 效率建议</button>
+                        <button class="quick-reply-btn" onclick="sendQuickReply('如何改善睡眠质量')">😴 睡眠建议</button>
+                        <button class="quick-reply-btn" onclick="sendQuickReply('如何安排运动时间')">🏃 运动建议</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <!-- 添加/编辑活动模态框 -->
+    <div id="activityModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="modalTitle" class="text-xl font-bold">添加活动</h3>
+                <button id="closeModal" class="text-gray-500 hover:text-gray-700">
+                    <i class="fa fa-times"></i>
+                </button>
+            </div>
+            <form id="activityForm">
+                <input type="hidden" id="activityId">
+                <input type="hidden" id="activityDate">
+                <input type="hidden" id="activityStartTime">
+                <input type="hidden" id="activityEndTime">
+                
+                <div class="mb-4">
+                    <label for="activityTitle" class="block text-gray-700 mb-1">活动标题</label>
+                    <input type="text" id="activityTitle" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-primary" required>
+                </div>
+                
+                <div class="mb-4">
+                    <label for="activityType" class="block text-gray-700 mb-1">活动类型</label>
+                    <select id="activityType" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-primary" required>
+                        <option value="学习/工作">学习/工作</option>
+                        <option value="休息">休息</option>
+                        <option value="运动/娱乐">运动/娱乐</option>
+                        <option value="通勤/家务/吃饭">通勤/家务/吃饭</option>
+                    </select>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label for="activityStart" class="block text-gray-700 mb-1">开始时间</label>
+                        <input type="time" id="activityStart" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-primary" required>
+                    </div>
+                    <div>
+                        <label for="activityEnd" class="block text-gray-700 mb-1">结束时间</label>
+                        <input type="time" id="activityEnd" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-primary" required>
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <label for="activityNotes" class="block text-gray-700 mb-1">备注</label>
+                    <textarea id="activityNotes" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-primary" rows="3"></textarea>
+                </div>
+                
+                <div class="flex justify-end space-x-3">
+                    <button type="button" id="deleteActivity" class="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition hidden">
+                        删除
+                    </button>
+                    <button type="button" id="cancelActivity" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition">
+                        取消
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-primary text-white rounded-md hover:bg-blue-600 transition">
+                        保存
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- 设置模态框 -->
+    <div id="settingsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold">设置</h3>
+                <button id="closeSettingsModal" class="text-gray-500 hover:text-gray-700">
+                    <i class="fa fa-times"></i>
+                </button>
+            </div>
+            <form id="settingsForm">
+                <div class="mb-4">
+                    <label for="reminderTime" class="block text-gray-700 mb-1">每日记录提醒时间</label>
+                    <input type="time" id="reminderTime" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-primary">
+                </div>
+                
+                <div class="mb-4">
+                    <label class="flex items-center">
+                        <input type="checkbox" id="enableReminders" class="form-checkbox h-5 w-5 text-primary">
+                        <span class="ml-2 text-gray-700">启用每日提醒</span>
+                    </label>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="flex items-center">
+                        <input type="checkbox" id="enableAI" class="form-checkbox h-5 w-5 text-primary" checked>
+                        <span class="ml-2 text-gray-700">启用AI助手</span>
+                    </label>
+                </div>
+                
+                <div class="flex justify-end">
+                    <button type="button" id="cancelSettings" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition mr-3">
+                        取消
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-primary text-white rounded-md hover:bg-blue-600 transition">
+                        保存
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- 提醒通知 -->
+    <div id="reminderNotification" class="fixed bottom-4 right-4 bg-white rounded-lg shadow-lg p-4 max-w-sm transform translate-y-full opacity-0 transition-all duration-300 z-50">
+        <div class="flex items-start">
+            <div class="bg-primary rounded-full p-2 text-white mr-3">
+                <i class="fa fa-bell"></i>
+            </div>
+            <div class="flex-grow">
+                <h4 class="font-medium">记录今日活动</h4>
+                <p class="text-sm text-gray-600">别忘了记录今天的作息安排哦！</p>
+            </div>
+            <button id="closeNotification" class="text-gray-400 hover:text-gray-600">
+                <i class="fa fa-times"></i>
+            </button>
+        </div>
+        <div class="mt-3 flex justify-end">
+            <button id="dismissNotification" class="text-sm text-primary hover:underline">
+                稍后提醒
+            </button>
+            <button id="recordActivity" class="ml-3 px-3 py-1 bg-primary text-white rounded-md hover:bg-blue-600 text-sm">
+                立即记录
+            </button>
+        </div>
+    </div>
+    <script src="api.js"></script>
+    <script src="ai-api.js"></script>
+    <script>
+        // 全局变量
+        let currentDate = new Date();
+        let activities = [];
+        let userSettings = {
+            reminderTime: "20:00",
+            enableReminders: true,
+            enableAI: true
+        };
+        let draggedActivity = null;
+        let dragOffsetX = 0;
+        let dragOffsetY = 0;
+        let weeklyChart = null;
+        
+        // 活动类型颜色映射
+        const activityColors = {
+            "学习/工作": "bg-primary/80 text-white backdrop-blur-sm",
+            "休息": "bg-secondary/80 text-white backdrop-blur-sm",
+            "运动/娱乐": "bg-accent/80 text-white backdrop-blur-sm",
+            "通勤/家务/吃饭": "bg-neutral/80 text-white backdrop-blur-sm"
+        };
+        
+        // AI计划活动类型颜色映射（更淡的颜色）
+        const planActivityColors = {
+            "学习/工作": "bg-primary/40 text-white backdrop-blur-sm",
+            "休息": "bg-secondary/40 text-white backdrop-blur-sm",
+            "运动/娱乐": "bg-accent/40 text-white backdrop-blur-sm",
+            "通勤/家务/吃饭": "bg-neutral/40 text-white backdrop-blur-sm"
+        };
+        
+        // 初始化应用
+        document.addEventListener('DOMContentLoaded', async function() {
+            // 加载数据
+            await loadActivities();  // 改为异步加载
+            await loadSettings();    // 改为异步加载
+                        // ========== 新增：自动清理过期计划 ==========
+            try {
+                await fetch('http://localhost:8000/api/ai/clean-expired-plans', { method: 'POST' });
+                // 清理后重新加载最新数据
+                await loadActivities();
+            } catch (error) {
+                console.log('清理过期计划失败（可能后端未启动）', error);
+            }
+            // 初始化日历
+            renderCalendar();
+            
+            // 初始化图表
+            initWeeklyChart();
+            
+            // 更新统计信息
+            updateStatistics();
+            
+            // 更新AI总结和计划
+            updateAISummary();
+            
+            // 设置事件监听器
+            setupEventListeners();
+            
+            // 设置提醒
+            setupReminder();
+        });
+        
+        // 渲染日历
+        function renderCalendar() {
+            const calendar = document.getElementById('calendar');
+            calendar.innerHTML = '';
+            
+            // 获取当前周的起始日期（周一）
+            const startOfWeek = getStartOfWeek(currentDate);
+            
+            // 更新当前周显示
+            document.getElementById('currentWeek').textContent = `${formatDate(startOfWeek)} - ${formatDate(addDays(startOfWeek, 6))}`;
+            
+            // 创建时间轴标题单元格
+            const timeHeaderCell = document.createElement('div');
+            timeHeaderCell.className = 'calendar-header time-header flex items-center justify-center font-medium bg-gray-50';
+            calendar.appendChild(timeHeaderCell);
+            
+            // 创建日期标题行
+            for (let i = 0; i < 7; i++) {
+                const date = addDays(startOfWeek, i);
+                const dayCell = document.createElement('div');
+                dayCell.className = 'calendar-header flex flex-col items-center justify-center font-medium bg-gray-50';
+                
+                const dayName = document.createElement('div');
+                dayName.className = 'text-sm';
+                dayName.textContent = getDayName(date);
+                
+                const dayNumber = document.createElement('div');
+                dayNumber.className = 'text-lg';
+                dayNumber.textContent = date.getDate();
+                
+                // 如果是今天，添加高亮
+                if (isSameDay(date, new Date())) {
+                    dayNumber.className += ' bg-primary text-white rounded-full w-8 h-8 flex items-center justify-center';
+                }
+                
+                dayCell.appendChild(dayName);
+                dayCell.appendChild(dayNumber);
+                calendar.appendChild(dayCell);
+            }
+            
+            // 创建时间轴和日历单元格
+            for (let hour = 0; hour < 24; hour++) {
+                // 创建时间标签
+                const timeCell = document.createElement('div');
+                timeCell.className = 'time-header flex items-center justify-center text-sm text-gray-500 bg-gray-50';
+                timeCell.textContent = `${hour.toString().padStart(2, '0')}:00`;
+                calendar.appendChild(timeCell);
+                
+                // 创建每天的单元格
+                for (let day = 0; day < 7; day++) {
+                    const date = addDays(startOfWeek, day);
+                    const cell = document.createElement('div');
+                    cell.className = 'calendar-cell';
+                    cell.dataset.date = formatDate(date);
+                    cell.dataset.hour = hour;
+                    
+                    calendar.appendChild(cell);
+                }
+            }
+            
+            // 渲染活动
+            renderActivities();
+        }
+        
+        // 渲染活动
+        function renderActivities() {
+            // 清除现有活动
+            document.querySelectorAll('.activity-block').forEach(block => block.remove());
+            
+            // 获取当前周的起始和结束日期（字符串格式，更可靠）
+            const startOfWeek = getStartOfWeek(currentDate);
+            const endOfWeek = addDays(startOfWeek, 6);
+            
+            const startOfWeekStr = formatDate(startOfWeek);
+            const endOfWeekStr = formatDate(endOfWeek);
+            const todayStr = formatDate(new Date());
+            
+            console.log(`📅 本周范围: ${startOfWeekStr} ~ ${endOfWeekStr}`);
+            console.log(`📌 今天: ${todayStr}`);
+            console.log(`📊 总活动数: ${activities.length}`);
+            
+            // ⭐ 用字符串比较日期（YYYY-MM-DD 格式，直接比大小很可靠）
+            const weeklyActivities = activities.filter(activity => {
+                const activityDateStr = activity.date;
+                
+                // 直接字符串比较："2026-06-15" >= "2026-06-10" 返回 true
+                const inWeek = activityDateStr >= startOfWeekStr && activityDateStr <= endOfWeekStr;
+                
+                // 确保当天的活动（包括普通活动和计划）都被显示
+                const isToday = activityDateStr === todayStr;
+                
+                return inWeek || isToday;
+            });
+            
+            console.log(`✅ 本周显示活动: ${weeklyActivities.length} 条`);
+            weeklyActivities.forEach(a => {
+                console.log(`   ${a.date} ${a.startTime}-${a.endTime} ${a.title} ${a.isPlan ? '(计划)' : ''}`);
+            });
+            
+            // 渲染每个活动
+            weeklyActivities.forEach(activity => {
+                const activityElement = createActivityElement(activity);
+                const startHour = getHourFromTime(activity.startTime);
+                const cell = document.querySelector(`.calendar-cell[data-date="${activity.date}"][data-hour="${startHour}"]`);
+                
+                if (cell) {
+                    cell.appendChild(activityElement);
+                }
+            });
+        }
+        
+        // 创建活动元素
+        function createActivityElement(activity) {
+            const element = document.createElement('div');
+
+            // ====== 检查是否为AI计划 ======
+            const isPlan = activity.isPlan || false;
+
+            // 根据类型选择颜色
+            const colorClass = activityColors[activity.type] || 'bg-gray-200 text-gray-800';
+            element.className = `activity-block ${colorClass}`;
+            element.dataset.id = activity.id;
+
+            // ====== ⭐ 核心修复：根据开始分钟精确计算top位置 ⭐ ======
+            // 解析时间
+            const [sh, sm] = activity.startTime.split(':').map(Number);
+            const [eh, em] = activity.endTime.split(':').map(Number);
+            const startMinutes = sh * 60 + sm;
+            const endMinutes = eh * 60 + em;
+            const durationMinutes = endMinutes - startMinutes;
+
+            // 每个单元格高度是 60px（对应60分钟）
+            const CELL_HEIGHT = 60;
+
+            // top = 分钟数 / 60 * 单元格高度
+            element.style.position = 'absolute';
+            element.style.left = '4px';
+            element.style.width = 'calc(100% - 8px)';
+            element.style.top = `${(sm / 60) * CELL_HEIGHT}px`;
+            element.style.height = `${Math.max(24, (durationMinutes / 60) * CELL_HEIGHT - 2)}px`;
+            element.style.zIndex = isPlan ? 5 : 10;
+
+            // ====== ⭐ AI计划：淡色半透明样式 ======
+            if (isPlan) {
+                element.style.opacity = '0.45';
+                element.style.border = '2px dashed rgba(255, 255, 255, 0.6)';
+                element.style.background = element.style.background || '';
+                element.title = '📌 计划活动 - 点击确认转为正式活动';
+            }
+
+            // 标题
+            const title = document.createElement('div');
+            title.className = 'font-medium text-sm truncate';
+            title.textContent = activity.title;
+            element.appendChild(title);
+
+            // 时间
+            const time = document.createElement('div');
+            time.className = 'text-xs opacity-80 truncate';
+            time.textContent = `${activity.startTime} - ${activity.endTime}`;
+            element.appendChild(time);
+
+            // AI计划提示
+            if (isPlan) {
+                const badge = document.createElement('div');
+                badge.style.cssText = 'font-size: 10px; font-weight: bold; margin-top: 2px;';
+                badge.textContent = '📌 点击确认';
+                element.appendChild(badge);
+
+                // ⭐ AI计划点击确认事件
+                element.addEventListener('click', async function(e) {
+                    e.stopPropagation();
+                    if (confirm(`确认将「${activity.title}」转为正式活动吗？`)) {
+                        try {
+                            const response = await fetch(
+                                `http://localhost:8000/api/activities/${activity.id}/confirm`,
+                                { method: 'PUT' }
+                            );
+                            if (!response.ok) throw new Error('确认失败');
+
+                            // 更新本地数据并刷新
+                            activity.isPlan = false;
+                            await loadActivities();
+                            renderCalendar();
+                        } catch (error) {
+                            alert('确认失败，请检查后端服务');
+                        }
+                    }
+                });
+            }
+
+            // 双击编辑
+            element.addEventListener('dblclick', function(e) {
+                e.stopPropagation();
+                showActivityModal(activity, activity.date, activity.startTime, activity.endTime);
+            });
+            // ⭐ 注册拖拽事件
+            setupDragEvents(element, activity);
+
+            return element;
+        }
+        
+                // ============================================================
+        // 拖拽功能：长按活动 → 拖动到空白时间格 → 选择移动/复制
+        // ============================================================
+        let dragState = {
+            isDragging: false,
+            draggingActivity: null,
+            ghostElement: null,
+            startX: 0,
+            startY: 0,
+            dragStartTime: 0,
+            moved: false
+        };
+
+        // 长按检测（超过 300ms 才视为拖拽，否则是普通点击）
+        const LONG_PRESS_MS = 300;
+
+        // 给每个活动块添加拖拽事件（在 createActivityElement 内调用）
+        function setupDragEvents(element, activity) {
+            // 鼠标按下
+            element.addEventListener('mousedown', function(e) {
+                if (e.button !== 0) return; // 只处理左键
+                e.preventDefault();
+                e.stopPropagation();
+
+                dragState.dragStartTime = Date.now();
+                dragState.startX = e.clientX;
+                dragState.startY = e.clientY;
+                dragState.draggingActivity = activity;
+                dragState.moved = false;
+
+                // 准备：延迟后进入拖拽模式
+                const timer = setTimeout(() => {
+                    startDrag(element, activity, e.clientX, e.clientY);
+                }, LONG_PRESS_MS);
+
+                // 鼠标移动（还没进入拖拽模式时，用于判断是否移动）
+                const onPreMove = (moveEvent) => {
+                    const dx = Math.abs(moveEvent.clientX - dragState.startX);
+                    const dy = Math.abs(moveEvent.clientY - dragState.startY);
+                    if (dx > 5 || dy > 5) {
+                        clearTimeout(timer);
+                        onPreMoveCleanup();
+                        // 快速移动也启动拖拽
+                        startDrag(element, activity, moveEvent.clientX, moveEvent.clientY);
+                    }
+                };
+
+                // 鼠标松开（还没进入拖拽模式时，视为普通点击）
+                const onPreUp = (upEvent) => {
+                    clearTimeout(timer);
+                    onPreMoveCleanup();
+                    document.removeEventListener('mouseup', onPreUp);
+                };
+
+                const onPreMoveCleanup = () => {
+                    document.removeEventListener('mousemove', onPreMove);
+                };
+
+                document.addEventListener('mousemove', onPreMove);
+                document.addEventListener('mouseup', onPreUp);
+            });
+
+            // 触摸设备支持（长按）
+            element.addEventListener('touchstart', function(e) {
+                e.preventDefault();
+                const touch = e.touches[0];
+                dragState.dragStartTime = Date.now();
+                dragState.startX = touch.clientX;
+                dragState.startY = touch.clientY;
+                dragState.draggingActivity = activity;
+                dragState.moved = false;
+
+                const timer = setTimeout(() => {
+                    startDrag(element, activity, touch.clientX, touch.clientY);
+                }, LONG_PRESS_MS);
+
+                const onTouchMove = (moveEvent) => {
+                    const t = moveEvent.touches[0];
+                    const dx = Math.abs(t.clientX - dragState.startX);
+                    const dy = Math.abs(t.clientY - dragState.startY);
+                    if (dx > 5 || dy > 5) {
+                        clearTimeout(timer);
+                        cleanup();
+                        startDrag(element, activity, t.clientX, t.clientY);
+                    }
+                };
+
+                const onTouchEnd = () => {
+                    clearTimeout(timer);
+                    cleanup();
+                };
+
+                const cleanup = () => {
+                    document.removeEventListener('touchmove', onTouchMove);
+                    document.removeEventListener('touchend', onTouchEnd);
+                };
+
+                document.addEventListener('touchmove', onTouchMove);
+                document.addEventListener('touchend', onTouchEnd);
+            });
+        }
+
+        // 开始拖拽
+        function startDrag(element, activity, x, y) {
+            dragState.isDragging = true;
+
+            // 原活动变透明，表示正在被拖
+            element.classList.add('dragging');
+
+            // 记录原活动的颜色（用于创建虚线框）
+            const computedStyle = window.getComputedStyle(element);
+            const bgColor = computedStyle.backgroundColor || '#a78bfa';
+
+            // 创建跟随鼠标的虚线框
+            const ghost = document.createElement('div');
+            ghost.className = 'drag-ghost';
+            ghost.style.backgroundColor = bgColor;
+            ghost.style.borderColor = bgColor;
+            ghost.style.width = element.offsetWidth + 'px';
+            ghost.style.height = element.offsetHeight + 'px';
+            ghost.style.left = x - element.offsetWidth / 2 + 'px';
+            ghost.style.top = y - 20 + 'px';
+            ghost.style.position = 'fixed';
+            document.body.appendChild(ghost);
+            dragState.ghostElement = ghost;
+
+            document.body.classList.add('dragging-mode');
+
+            // 拖拽中的移动处理
+            const onMove = (moveEvent) => {
+                const clientX = moveEvent.clientX !== undefined ? moveEvent.clientX : moveEvent.touches[0].clientX;
+                const clientY = moveEvent.clientY !== undefined ? moveEvent.clientY : moveEvent.touches[0].clientY;
+
+                // 更新跟随鼠标的虚线框位置
+                ghost.style.left = clientX - element.offsetWidth / 2 + 'px';
+                ghost.style.top = clientY - 20 + 'px';
+
+                // 高亮鼠标下方的目标单元格
+                highlightTargetCell(clientX, clientY);
+            };
+
+            // 鼠标松开 → 完成拖拽
+            const onUp = (upEvent) => {
+                const clientX = upEvent.clientX !== undefined ? upEvent.clientX : (upEvent.changedTouches ? upEvent.changedTouches[0].clientX : 0);
+                const clientY = upEvent.clientY !== undefined ? upEvent.clientY : (upEvent.changedTouches ? upEvent.changedTouches[0].clientY : 0);
+
+                endDrag(clientX, clientY);
+
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('mouseup', onUp);
+                document.removeEventListener('touchmove', onMove);
+                document.removeEventListener('touchend', onUp);
+            };
+
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('mouseup', onUp);
+            document.addEventListener('touchmove', onMove);
+            document.addEventListener('touchend', onUp);
+        }
+
+        // 高亮鼠标下方的目标时间格（预览放置位置）
+        let lastHighlightedCell = null;
+        function highlightTargetCell(x, y) {
+            // 获取鼠标下方的元素
+            const elements = document.elementsFromPoint(x, y);
+            let targetCell = null;
+
+            for (const el of elements) {
+                if (el.classList.contains('calendar-cell')) {
+                    targetCell = el;
+                    break;
+                }
+            }
+
+            // 移除上一个高亮
+            if (lastHighlightedCell && lastHighlightedCell !== targetCell) {
+                lastHighlightedCell.style.outline = '';
+                lastHighlightedCell.style.backgroundColor = '';
+            }
+
+            // 高亮当前目标
+            if (targetCell) {
+                targetCell.style.outline = '2px dashed #10b981';
+                targetCell.style.outlineOffset = '-3px';
+                targetCell.style.backgroundColor = 'rgba(16, 185, 129, 0.12)';
+                lastHighlightedCell = targetCell;
+            } else {
+                lastHighlightedCell = null;
+            }
+        }
+
+        // 结束拖拽
+        function endDrag(x, y) {
+            const activity = dragState.draggingActivity;
+
+            // 清理样式
+            if (dragState.ghostElement) {
+                dragState.ghostElement.remove();
+            }
+            document.body.classList.remove('dragging-mode');
+
+            // 恢复原活动样式
+            const allActivities = document.querySelectorAll('.activity-block');
+            allActivities.forEach(el => el.classList.remove('dragging'));
+
+            // 清除高亮
+            if (lastHighlightedCell) {
+                lastHighlightedCell.style.outline = '';
+                lastHighlightedCell.style.backgroundColor = '';
+                lastHighlightedCell = null;
+            }
+
+            // 找到鼠标松开时所在的时间格
+            const elements = document.elementsFromPoint(x, y);
+            let targetCell = null;
+            for (const el of elements) {
+                if (el.classList.contains('calendar-cell')) {
+                    targetCell = el;
+                    break;
+                }
+            }
+
+            // 重置状态
+            dragState.isDragging = false;
+            dragState.ghostElement = null;
+
+            if (!targetCell || !activity) {
+                return; // 没有在有效区域松开，忽略
+            }
+
+            // 获取目标单元格的日期和时间
+            const targetDate = targetCell.dataset.date;
+            const targetHour = parseInt(targetCell.dataset.hour);
+
+            // 计算原活动时长
+            const duration = calculateDuration(activity.startTime, activity.endTime);
+
+            // 计算新时间（保持相同时长）
+            const newStartHour = targetHour;
+            const newStartMinute = 0; // 对齐到小时开始
+            const newStartTime = `${String(newStartHour).padStart(2, '0')}:${String(newStartMinute).padStart(2, '0')}`;
+
+            // 根据时长计算结束时间
+            let totalMinutes = newStartHour * 60 + newStartMinute + duration;
+            let endHour = Math.floor(totalMinutes / 60);
+            let endMinute = totalMinutes % 60;
+            if (endHour >= 24) {
+                endHour = 23;
+                endMinute = 59;
+            }
+            const newEndTime = `${String(endHour).padStart(2, '0')}:${String(endMinute).padStart(2, '0')}`;
+
+            // 如果日期或时间都没变，不处理
+            if (targetDate === activity.date && newStartTime === activity.startTime) {
+                return;
+            }
+
+            // 显示确认弹窗：移动 / 复制
+            showMoveCopyDialog(activity, targetDate, newStartTime, newEndTime);
+        }
+
+        // 移动/复制确认弹窗
+        // 移动/复制确认弹窗（简洁问答框）
+        function showMoveCopyDialog(activity, newDate, newStartTime, newEndTime) {
+            const oldTime = `${activity.date} ${activity.startTime}-${activity.endTime}`;
+            const newTime = `${newDate} ${newStartTime}-${newEndTime}`;
+
+            const overlay = document.createElement('div');
+            overlay.className = 'modal-overlay';
+
+            overlay.innerHTML = `
+                <div class="confirm-box">
+                    <div class="confirm-icon">✋</div>
+                    <div class="confirm-title">你想移动或复制这个活动？</div>
+                    <div class="confirm-message" style="text-align: left; margin: 0 auto; display: inline-block;">
+                        <strong>活动：</strong>${activity.title}<br>
+                        <strong>类型：</strong>${activity.type}<br>
+                        <strong>原位置：</strong>${oldTime}<br>
+                        <strong>新位置：</strong>${newTime}
+                    </div>
+                    <div class="confirm-buttons">
+                        <button class="confirm-btn confirm-btn-cancel" id="dragCancelBtn">取消</button>
+                        <button class="confirm-btn" id="dragCopyBtn" style="background: linear-gradient(135deg, #3b82f6, #2563eb); color: white;">📋 复制</button>
+                        <button class="confirm-btn" id="dragMoveBtn" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white;">↔ 移动</button>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(overlay);
+            const close = () => overlay.remove();
+
+            document.getElementById('dragCancelBtn').onclick = close;
+            overlay.onclick = (e) => { if (e.target === overlay) close(); };
+
+            // ✅ 移动：修改数据库中该条目的时间和日期（原条目被修改，相当于删除原位置）
+            document.getElementById('dragMoveBtn').onclick = async function() {
+                close();
+                try {
+                    const updatedActivity = {
+                        title: activity.title,
+                        type: activity.type,
+                        date: newDate,
+                        start_time: newStartTime,
+                        end_time: newEndTime,
+                        notes: activity.notes || ''
+                    };
+
+                    if (window.activityAPI) {
+                        await window.activityAPI.update(activity.id, updatedActivity);
+                    }
+
+                    // 重新加载数据 + 刷新日历
+                    await loadActivities();
+                    renderCalendar();
+                } catch (error) {
+                    console.error('移动失败:', error);
+                    alert('移动失败，请检查后端服务');
+                }
+            };
+
+            // ✅ 复制：保留原条目，创建新条目到数据库
+            document.getElementById('dragCopyBtn').onclick = async function() {
+                close();
+                try {
+                    const newActivity = {
+                        title: activity.title + ' (副本)',
+                        type: activity.type,
+                        date: newDate,
+                        start_time: newStartTime,
+                        end_time: newEndTime,
+                        notes: activity.notes || ''
+                    };
+
+                    if (window.activityAPI) {
+                        await window.activityAPI.create(newActivity);
+                    }
+
+                    await loadActivities();
+                    renderCalendar();
+                } catch (error) {
+                    console.error('复制失败:', error);
+                    alert('复制失败，请检查后端服务');
+                }
+            };
+        }
+        
+        // 初始化周统计图表
+        function initWeeklyChart() {
+            const ctx = document.getElementById('weeklyChart').getContext('2d');
+            
+            // 销毁现有图表（如果存在）
+            if (weeklyChart) {
+                weeklyChart.destroy();
+            }
+            
+            // 获取当前周的日期标签
+            const startOfWeek = getStartOfWeek(currentDate);
+            const labels = [];
+            for (let i = 0; i < 7; i++) {
+                const date = addDays(startOfWeek, i);
+                labels.push(getDayName(date, true));
+            }
+            
+            // 准备数据
+            const datasets = [
+                {
+                    label: '学习/工作',
+                    data: getDailyDataByType('学习/工作'),
+                    backgroundColor: 'rgba(59, 130, 246, 0.8)',
+                    borderColor: 'rgba(59, 130, 246, 0.8)',
+                    borderWidth: 1
+                },
+                {
+                    label: '休息',
+                    data: getDailyDataByType('休息'),
+                    backgroundColor: 'rgba(16, 185, 129, 0.8)',
+                    borderColor: 'rgba(16, 185, 129, 0.8)',
+                    borderWidth: 1
+                },
+                {
+                    label: '运动/娱乐',
+                    data: getDailyDataByType('运动/娱乐'),
+                    backgroundColor: 'rgba(245, 158, 11, 0.8)',
+                    borderColor: 'rgba(245, 158, 11, 0.8)',
+                    borderWidth: 1
+                },
+                {
+                    label: '通勤/家务/吃饭',
+                    data: getDailyDataByType('通勤/家务/吃饭'),
+                    backgroundColor: 'rgba(107, 114, 128, 0.8)',
+                    borderColor: 'rgba(107, 114, 128, 0.8)',
+                    borderWidth: 1
+                }
+            ];
+            
+            // 创建图表
+            weeklyChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            stacked: true,
+                            grid: {
+                                display: false
+                            }
+                        },
+                        y: {
+                            stacked: true,
+                            title: {
+                                display: true,
+                                text: '时间（小时）'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return Math.round(value / 60);
+                                },
+                                stepSize: 60
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.dataset.label || '';
+                                    const value = context.raw || 0;
+                                    return `${label}: ${(value / 60).toFixed(1)}小时`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // 获取按类型分类的每日数据（只统计当前时间之前的条目）
+        function getDailyDataByType(type) {
+            const startOfWeek = getStartOfWeek(currentDate);
+            const data = [];
+            const now = new Date();
+            const today = formatDate(now);
+
+            for (let i = 0; i < 7; i++) {
+                const date = formatDate(addDays(startOfWeek, i));
+                const dailyActivities = activities.filter(a => a.date === date && a.type === type).filter(activity => {
+                    // 如果是今天，只统计结束时间在当前时间之前的活动
+                    if (activity.date === today) {
+                        const endDt = new Date(`${activity.date}T${activity.endTime}`);
+                        return endDt <= now;
+                    }
+                    // 过去的日期全部统计，未来日期不统计
+                    const activityDate = new Date(activity.date);
+                    return activityDate < new Date(today);
+                });
+
+                const totalMinutes = dailyActivities.reduce((sum, activity) => {
+                    return sum + calculateDuration(activity.startTime, activity.endTime);
+                }, 0);
+
+                data.push(totalMinutes);
+            }
+
+            return data;
+        }
+        
+        // 更新统计信息
+        function updateStatistics() {
+            // 只统计本周中当前时间之前的活动
+            const startOfWeek = getStartOfWeek(currentDate);
+            const endOfWeek = addDays(startOfWeek, 6);
+            const now = new Date();
+            const today = formatDate(now);
+
+            // 过滤当前周的活动，并排除发生在现在之后的条目（按结束时间判断）
+            const weeklyActivities = activities.filter(activity => {
+                const activityDate = new Date(activity.date);
+                const inWeek = activityDate >= startOfWeek && activityDate <= endOfWeek;
+                if (!inWeek) return false;
+
+                // 如果是今天，只有结束时间在当前时间之前的才统计
+                if (activity.date === today) {
+                    const endDt = new Date(`${activity.date}T${activity.endTime}`);
+                    return endDt <= now;
+                }
+
+                // 过去日期全部统计，未来日期不统计
+                return activityDate < new Date(today);
+            });
+
+            // 按类型计算时间
+            const timeByType = {
+                '学习/工作': 0,
+                '休息': 0,
+                '运动/娱乐': 0,
+                '通勤/家务/吃饭': 0
+            };
+
+            weeklyActivities.forEach(activity => {
+                const duration = calculateDuration(activity.startTime, activity.endTime);
+                if (!timeByType.hasOwnProperty(activity.type)) return;
+                timeByType[activity.type] += duration;
+            });
+
+            // 更新统计显示
+            document.getElementById('studyWorkTime').textContent = `${Math.round(timeByType['学习/工作'] / 60)}小时`;
+            document.getElementById('restTime').textContent = `${Math.round(timeByType['休息'] / 60)}小时`;
+            document.getElementById('exerciseTime').textContent = `${Math.round(timeByType['运动/娱乐'] / 60)}小时`;
+            document.getElementById('dailyTasksTime').textContent = `${Math.round(timeByType['通勤/家务/吃饭'] / 60)}小时`;
+
+            const totalTime = Object.values(timeByType).reduce((sum, time) => sum + time, 0);
+            document.getElementById('totalTime').textContent = `${Math.round(totalTime / 60)}小时`;
+
+            // 更新图表
+            initWeeklyChart();
+        }
+        
+        // 更新AI总结和计划
+                // 更新AI总结和计划
+        function updateAISummary() {
+            const today = formatDate(new Date());
+            
+            // 更新日期显示（今日总结）
+            const summaryDateEl = document.getElementById('summaryDate');
+            if (summaryDateEl) {
+                summaryDateEl.textContent = `${formatDateForDisplay(today)} 总结`;
+            }
+            
+            // 获取今日活动
+            const todayActivities = activities.filter(a => a.date === today);
+            
+            const dailySummaryEl = document.getElementById('dailySummary');
+            if (!dailySummaryEl) return;
+            
+            if (todayActivities.length === 0) {
+                // 如果没有今日活动
+                dailySummaryEl.textContent = '今天还没有记录活动，开始添加你的第一个活动吧！';
+                return;
+            }
+            
+            // 计算各类活动时间
+            const timeByType = {
+                '学习/工作': 0,
+                '休息': 0,
+                '运动/娱乐': 0,
+                '通勤/家务/吃饭': 0
+            };
+            
+            todayActivities.forEach(activity => {
+                const duration = calculateDuration(activity.startTime, activity.endTime);
+                if (!isNaN(duration)) {
+                    timeByType[activity.type] += duration;
+                }
+            });
+            
+            // 生成总结
+            const summary = generateDailySummary(today, todayActivities, timeByType);
+            dailySummaryEl.innerHTML = summary;
+        }
+        
+        // 生成每日总结
+        function generateDailySummary(date, activities, timeByType) {
+            const totalMinutes = Object.values(timeByType).reduce((sum, time) => sum + time, 0);
+            const totalHours = Math.round(totalMinutes / 60);
+            
+            // 找出时间最长的活动类型
+            let maxTimeType = '';
+            let maxTime = 0;
+            
+            for (const [type, time] of Object.entries(timeByType)) {
+                if (time > maxTime) {
+                    maxTime = time;
+                    maxTimeType = type;
+                }
+            }
+            
+            // 计算各类活动时间占比
+            const studyWorkRatio = Math.round((timeByType['学习/工作'] / totalMinutes) * 100);
+            const restRatio = Math.round((timeByType['休息'] / totalMinutes) * 100);
+            const exerciseRatio = Math.round((timeByType['运动/娱乐'] / totalMinutes) * 100);
+            const dailyTasksRatio = Math.round((timeByType['通勤/家务/吃饭'] / totalMinutes) * 100);
+            
+            // 找出主要活动
+            const mainActivities = activities
+                .filter(a => a.type === maxTimeType)
+                .sort((a, b) => calculateDuration(b.startTime, b.endTime) - calculateDuration(a.startTime, a.endTime))
+                .slice(0, 2);
+            
+            // 生成总结文本
+            let summary = `<p class="mb-2">今天你总共记录了 <strong>${totalHours}小时</strong> 的活动。</p>`;
+            
+            summary += `<p class="mb-2">你在 <strong>${maxTimeType}</strong> 上花费了最多时间（${Math.round(maxTime / 60)}小时），占全天活动的 <strong>${Math.round((maxTime / totalMinutes) * 100)}%</strong>。</p>`;
+            
+            if (mainActivities.length > 0) {
+                summary += `<p class="mb-2">主要活动包括：</p><ul class="list-disc pl-5 mb-2">`;
+                mainActivities.forEach(activity => {
+                    const duration = calculateDuration(activity.startTime, activity.endTime);
+                    summary += `<li>${activity.title}（${Math.round(duration / 60)}小时${duration % 60 > 0 ? ` ${duration % 60}分钟` : ''}）</li>`;
+                });
+                summary += `</ul>`;
+            }
+            
+            // 效率分析
+            summary += `<p class="mb-2">时间分配分析：</p><ul class="list-disc pl-5 mb-2">`;
+            
+            if (studyWorkRatio > 50) {
+                summary += `<li>学习/工作时间占比较高（${studyWorkRatio}%），保持了良好的专注度。</li>`;
+            } else if (studyWorkRatio < 30) {
+                summary += `<li>学习/工作时间占比较低（${studyWorkRatio}%），可能需要增加专注时间。</li>`;
+            } else {
+                summary += `<li>学习/工作时间占比适中（${studyWorkRatio}%）。</li>`;
+            }
+            
+            if (restRatio < 15) {
+                summary += `<li>休息时间较少（${restRatio}%），注意劳逸结合。</li>`;
+            } else if (restRatio > 30) {
+                summary += `<li>休息时间充足（${restRatio}%），有助于恢复精力。</li>`;
+            }
+            
+            if (exerciseRatio < 5) {
+                summary += `<li>运动/娱乐时间较少（${exerciseRatio}%），建议增加身体活动。</li>`;
+            } else if (exerciseRatio > 15) {
+                summary += `<li>运动/娱乐时间充足（${exerciseRatio}%），保持了良好的生活平衡。</li>`;
+            }
+            
+            if (dailyTasksRatio > 25) {
+                summary += `<li>通勤/家务/吃饭时间较多（${dailyTasksRatio}%），可能需要优化日常事务。</li>`;
+            }
+            
+            summary += `</ul>`;
+            
+            // 鼓励性语句
+            const encouragements = [
+                '继续保持良好的时间管理习惯！',
+                '今天的安排很不错，继续加油！',
+                '合理的时间分配有助于提高效率。',
+                '保持这种平衡的生活方式！',
+                '你的时间管理能力正在提升！'
+            ];
+            
+            summary += `<p class="font-medium text-primary">${encouragements[Math.floor(Math.random() * encouragements.length)]}</p>`;
+            
+            return summary;
+        }
+        
+        
+        // 将计划添加到日历中
+        function addPlanToCalendar(date) {
+            // 检查是否已经存在该日期的计划
+            const existingPlans = activities.filter(a => a.date === date && a.isPlan);
+            if (existingPlans.length > 0) {
+                // 如果已经存在计划，先删除
+                activities = activities.filter(a => !(a.date === date && a.isPlan));
+            }
+
+        }
+        
+        // 设置事件监听器
+        function setupEventListeners() {
+            // 生成AI计划按钮
+            document.getElementById('generatePlanBtn').addEventListener('click', generateAIPlan);
+            // 导航按钮
+            document.getElementById('prevWeek').addEventListener('click', () => {
+                currentDate = addDays(currentDate, -7);
+                renderCalendar();
+                updateStatistics();
+            });
+            
+            document.getElementById('nextWeek').addEventListener('click', () => {
+                currentDate = addDays(currentDate, 7);
+                renderCalendar();
+                updateStatistics();
+            });
+            
+            // 添加活动按钮
+            document.getElementById('addActivityBtn').addEventListener('click', () => {
+                // 默认添加今天的活动，时间为当前时间
+                const now = new Date();
+                const today = formatDate(now);
+                const currentHour = now.getHours();
+                const currentMinute = Math.floor(now.getMinutes() / 10) * 10; // 四舍五入到最接近的10分钟
+                const startTime = `${currentHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}`;
+                const endTime = `${(currentHour + 1).toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}`;
+                
+                showActivityModal(null, today, startTime, endTime);
+            });
+            
+            // 设置按钮
+            document.getElementById('settingsBtn').addEventListener('click', () => {
+                document.getElementById('settingsModal').classList.remove('hidden');
+                document.getElementById('reminderTime').value = userSettings.reminderTime;
+                document.getElementById('enableReminders').checked = userSettings.enableReminders;
+                document.getElementById('enableAI').checked = userSettings.enableAI;
+            });
+            
+            // 关闭设置模态框
+            document.getElementById('closeSettingsModal').addEventListener('click', () => {
+                document.getElementById('settingsModal').classList.add('hidden');
+            });
+            
+            document.getElementById('cancelSettings').addEventListener('click', () => {
+                document.getElementById('settingsModal').classList.add('hidden');
+            });
+            
+            // 保存设置
+            document.getElementById('settingsForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                
+                userSettings.reminderTime = document.getElementById('reminderTime').value;
+                userSettings.enableReminders = document.getElementById('enableReminders').checked;
+                userSettings.enableAI = document.getElementById('enableAI').checked;
+                
+                saveSettings();
+                setupReminder();
+                
+                document.getElementById('settingsModal').classList.add('hidden');
+            });
+            
+            // 关闭活动模态框
+            document.getElementById('closeModal').addEventListener('click', () => {
+                document.getElementById('activityModal').classList.add('hidden');
+            });
+            
+            document.getElementById('cancelActivity').addEventListener('click', () => {
+                document.getElementById('activityModal').classList.add('hidden');
+            });
+            
+            // 保存活动
+            document.getElementById('activityForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+
+                const id = document.getElementById('activityId').value;
+                const title = document.getElementById('activityTitle').value;
+                const type = document.getElementById('activityType').value;
+                const date = document.getElementById('activityDate').value;
+                const startTime = document.getElementById('activityStart').value;
+                const endTime = document.getElementById('activityEnd').value;
+                const notes = document.getElementById('activityNotes').value;
+
+                // 验证时间
+                if (startTime >= endTime) {
+                    alert('结束时间必须晚于开始时间');
+                    return;
+                }
+
+                if (id) {
+                    // 更新现有活动
+                    const activity = activities.find(a => a.id === id);
+                    if (activity) {
+                        activity.title = title;
+                        activity.type = type;
+                        activity.date = date;
+                        activity.startTime = startTime;
+                        activity.endTime = endTime;
+                        activity.notes = notes;
+                    }
+                } else {
+                    // 创建新活动
+                    const newActivity = {
+                        id: generateId(),
+                        title: title,
+                        type: type,
+                        date: date,
+                        startTime: startTime,
+                        endTime: endTime,
+                        notes: notes
+                    };
+
+                    activities.push(newActivity);
+
+                    // 如果新活动的日期不在当前周，切换到该活动所在的周，方便用户立即查看
+                    const activityDate = new Date(date + 'T00:00:00');
+                    const startOfWeek = getStartOfWeek(currentDate);
+                    const endOfWeek = addDays(startOfWeek, 6);
+                    if (activityDate < startOfWeek || activityDate > endOfWeek) {
+                        currentDate = activityDate;
+                    }
+                }
+
+                // 保存活动
+                saveActivities();
+
+                // 重新渲染日历（可能已切换周）
+                renderCalendar();
+
+                // 更新统计信息
+                updateStatistics();
+
+                // 更新AI总结和计划
+                updateAISummary();
+
+                // 关闭模态框
+                document.getElementById('activityModal').classList.add('hidden');
+            });
+            
+            // 删除活动
+            document.getElementById('deleteActivity').addEventListener('click', () => {
+                const id = document.getElementById('activityId').value;
+                
+                if (id && confirm('确定要删除这个活动吗？')) {
+                    activities = activities.filter(a => a.id !== id);
+                    
+                    // 保存活动
+                    saveActivities();
+                    
+                    // 重新渲染日历
+                    renderCalendar();
+                    
+                    // 更新统计信息
+                    updateStatistics();
+                    
+                    // 更新AI总结和计划
+                    updateAISummary();
+                    
+                    // 关闭模态框
+                    document.getElementById('activityModal').classList.add('hidden');
+                }
+            });
+            
+            // 刷新总结按钮
+            document.getElementById('refreshSummary').addEventListener('click', () => {
+                updateAISummary();
+                
+                // 显示刷新动画
+                const button = document.getElementById('refreshSummary');
+                button.classList.add('animate-spin');
+                setTimeout(() => {
+                    button.classList.remove('animate-spin');
+                }, 1000);
+            });
+            
+            // 聊天发送按钮
+            document.getElementById('sendChat').addEventListener('click', sendChatMessage);
+            
+            // 聊天输入框回车发送
+            document.getElementById('chatInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    sendChatMessage();
+                }
+            });
+            
+            // 关闭通知
+            document.getElementById('closeNotification').addEventListener('click', () => {
+                hideNotification();
+            });
+            
+            document.getElementById('dismissNotification').addEventListener('click', () => {
+                hideNotification();
+                
+                // 30分钟后再次显示
+                setTimeout(() => {
+                    showNotification();
+                }, 30 * 60 * 1000);
+            });
+            
+            document.getElementById('recordActivity').addEventListener('click', () => {
+                hideNotification();
+                
+                // 打开添加活动模态框
+                const now = new Date();
+                const today = formatDate(now);
+                const currentHour = now.getHours();
+                const currentMinute = Math.floor(now.getMinutes() / 10) * 10; // 四舍五入到最接近的10分钟
+                const startTime = `${currentHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}`;
+                const endTime = `${(currentHour + 1).toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}`;
+                
+                showActivityModal(null, today, startTime, endTime);
+            });
+            
+            // 日历单元格点击事件（添加新活动）
+            document.addEventListener('click', (e) => {
+                const cell = e.target.closest('.calendar-cell');
+                
+                if (cell && !e.target.closest('.activity-block')) {
+                    // 获取单元格的日期和时间
+                    const date = cell.dataset.date;
+                    const hour = parseInt(cell.dataset.hour);
+                    
+                    // 计算点击位置对应的分钟（基于单元格高度，支持跨小时结束时间）
+                    const rect = cell.getBoundingClientRect();
+                    const relativeY = e.clientY - rect.top;
+                    const cellHeight = rect.height || 60;
+                    let minute = Math.floor((relativeY / cellHeight) * 60);
+                    minute = Math.max(0, Math.min(59, minute));
+
+                    // 四舍五入到最近的10分钟
+                    let roundedMinute = Math.round(minute / 10) * 10;
+                    if (roundedMinute === 60) roundedMinute = 50;
+
+                    // 计算开始和结束的小时与分钟（支持跨小时）
+                    const startTotal = hour * 60 + roundedMinute;
+                    const endTotal = startTotal + 30;
+                    const startHour = Math.floor(startTotal / 60) % 24;
+                    const startMin = startTotal % 60;
+                    const endHour = Math.floor(endTotal / 60) % 24;
+                    const endMin = endTotal % 60;
+
+                    const startTime = `${startHour.toString().padStart(2, '0')}:${startMin.toString().padStart(2, '0')}`;
+                    const endTime = `${endHour.toString().padStart(2, '0')}:${endMin.toString().padStart(2, '0')}`;
+                    
+                    // 显示添加活动模态框
+                    showActivityModal(null, date, startTime, endTime);
+                }
+            });
+        }
+          // 生成AI计划
+        async function generateAIPlan() {
+            const btn = document.getElementById('generatePlanBtn');
+            const statusEl = document.getElementById('planStatus');
+            
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa fa-spinner fa-spin mr-2"></i>正在分析你的作息数据...';
+            statusEl.className = 'mt-2 text-sm text-gray-600';
+            statusEl.textContent = 'AI正在分析你过去一周的作息习惯...';
+            statusEl.classList.remove('hidden');
+            
+            try {
+                const response = await fetch('http://localhost:8000/api/ai/generate-plan', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || '生成失败');
+                }
+                
+                const result = await response.json();
+                
+                // ✅ 关键修复：重新从后端加载所有活动数据（包括新生成的计划）
+                await loadActivities();
+                
+                // ✅ 自动导航到计划日期所在周
+                const planDate = result.date;
+                const [year, month, day] = planDate.split('-').map(Number);
+                currentDate = new Date(year, month - 1, day);
+                
+                // 显示成功消息
+                statusEl.className = 'mt-2 text-sm text-green-700';
+                statusEl.innerHTML = `
+                    <strong>✓ ${result.message}</strong><br>
+                    已生成 ${result.total_activities} 个活动安排，日期：${result.date}
+                `;
+                
+                // 在聊天窗口显示计划详情（可选）
+                const planText = result.activities.map(a => 
+                    `  ${a.start_time}-${a.end_time} ${a.title} (${a.type})`
+                ).join('\n');
+                
+                addChatMessage(`我已为你生成了明天(${result.date})的计划（淡色方块为计划，点击可确认）：\n\n${planText}`, 'ai');
+                
+                // ✅ 刷新日历显示和统计
+                renderCalendar();
+                updateStatistics();
+                
+                // 滚动聊天到底部
+                const chatContainer = document.getElementById('chatContainer');
+                if (chatContainer) {
+                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                }
+                
+            } catch (error) {
+                statusEl.className = 'mt-2 text-sm text-red-600';
+                statusEl.textContent = '错误: ' + error.message;
+                addChatMessage('生成计划失败，请确保你已经有一些活动记录，并且后端服务正在运行。', 'ai');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa fa-magic mr-2"></i>生成明天的计划';
+            }
+        }
+
+        // 发送消息时检测是否是调整计划的请求
+        async function sendChatMessage() {
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+            
+            if (message) {
+                addChatMessage(message, 'user');
+                input.value = '';
+                
+                const chatContainer = document.getElementById('chatContainer');
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+                
+                // 显示AI思考中
+                const thinkingId = 'thinking-' + Date.now();
+                addThinkingMessage(thinkingId);
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+                
+                try {
+                    // 检查是否是调整计划的关键词
+                    const adjustKeywords = ['计划', '调整', '取消', '增加', '多', '少', '运动', '学习', '早睡', '晚起', '睡觉'];
+                    const isAdjustRequest = adjustKeywords.some(keyword => message.includes(keyword));
+                    
+                    let reply;
+                    
+                    if (isAdjustRequest) {
+                        // 调用调整计划接口
+                        const adjustResponse = await fetch('http://localhost:8000/api/ai/adjust-plan', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ message: message })
+                        });
+                        
+                        const adjustResult = await adjustResponse.json();
+                        
+                        if (adjustResult.adjusted && adjustResult.activities.length > 0) {
+                            const planText = adjustResult.activities.map(a => 
+                                `  ${a.start_time}-${a.end_time} ${a.title}`
+                            ).join('\n');
+                            reply = `${adjustResult.message}\n\n当前计划：\n${planText}`;
+                            renderCalendar(); // 刷新日历
+                        } else {
+                            // 不是调整请求，使用正常AI回复
+                            const today = formatDate(new Date());
+                            const todayActivities = activities.filter(a => a.date === today);
+                            const context = {
+                                activities: todayActivities,
+                                settings: userSettings
+                            };
+                            reply = await window.aiService.generateReply(message, context);
+                        }
+                    } else {
+                        // 正常AI回复
+                        const today = formatDate(new Date());
+                        const todayActivities = activities.filter(a => a.date === today);
+                        const context = {
+                            activities: todayActivities,
+                            settings: userSettings
+                        };
+                        reply = await window.aiService.generateReply(message, context);
+                    }
+                    
+                    removeThinkingMessage(thinkingId);
+                    addChatMessage(reply, 'ai');
+                    
+                } catch (error) {
+                    removeThinkingMessage(thinkingId);
+                    addChatMessage('抱歉，处理请求时出现错误：' + error.message, 'ai');
+                }
+                
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
+        }
+                // 发送聊天消息
+        async function sendChatMessage() {
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+            
+            if (message) {
+                addChatMessage(message, 'user');
+                input.value = '';
+                
+                const chatContainer = document.getElementById('chatContainer');
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+                
+                // 显示AI思考中
+                const thinkingId = 'thinking-' + Date.now();
+                addThinkingMessage(thinkingId);
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+                
+                try {
+                    // ========== 调用后端的AI接口（推荐方式）
+                    const response = await fetch(
+                        'http://localhost:8000/api/ai/chat?message=' + encodeURIComponent(message),
+                        {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' }
+                        }
+                    );
+                    
+                    if (!response.ok) {
+                        throw new Error('AI服务请求失败');
+                    }
+                    
+                    const data = await response.json();
+                    removeThinkingMessage(thinkingId);
+                    addChatMessage(data.reply, 'ai');
+                    
+                } catch (error) {
+                    removeThinkingMessage(thinkingId);
+                    // 失败时降级使用模拟回复
+                    const fallback = generateMockReply(message);
+                    addChatMessage('（当前使用模拟回复） ' + fallback, 'ai');
+                }
+                
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
+        }
+
+        // 模拟回复（当后端不可用时的后备方案）
+        function generateMockReply(message) {
+            const lowerMessage = message.toLowerCase();
+            if (lowerMessage.includes('总结') || lowerMessage.includes('分析')) {
+                return '我可以帮你分析作息，不过需要后端服务支持。请确保后端服务正在运行。';
+            }
+            if (lowerMessage.includes('计划')) {
+                return '可以点击上方的"生成明天的计划"按钮，让AI为你制定计划。';
+            }
+            if (lowerMessage.includes('运动') || lowerMessage.includes('锻炼')) {
+                return '建议每天保持至少30分钟的运动，可以选择散步、跑步、瑜伽等方式。';
+            }
+            if (lowerMessage.includes('休息') || lowerMessage.includes('睡眠')) {
+                return '良好的休息对效率很重要！建议每工作1-2小时休息15分钟，保证7-8小时睡眠。';
+            }
+            return '你好！我是你的作息助手，可以帮你分析作息、生成计划。点击按钮试试看吧！';
+        }
+
+        // 快速回答
+        function sendQuickReply(message) {
+            const input = document.getElementById('chatInput');
+            input.value = message;
+            sendChatMessage();
+        }
+
+        // 添加思考消息
+        function addThinkingMessage(id) {
+            const chatContainer = document.getElementById('chatContainer');
+            const thinkingElement = document.createElement('div');
+            thinkingElement.id = id;
+            thinkingElement.className = 'chat-message ai';
+            thinkingElement.innerHTML = `
+                <span class="thinking">
+                    <span>AI思考中</span>
+                    <span class="thinking-dots">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </span>
+                </span>
+            `;
+            chatContainer.appendChild(thinkingElement);
+        }
+
+        // 移除思考消息
+        function removeThinkingMessage(id) {
+            const element = document.getElementById(id);
+            if (element) {
+                element.remove();
+            }
+        }
+        
+        // 添加聊天消息
+        function addChatMessage(message, sender) {
+            const chatContainer = document.getElementById('chatContainer');
+            const messageElement = document.createElement('div');
+            messageElement.className = `chat-message ${sender}`;
+            messageElement.textContent = message;
+            chatContainer.appendChild(messageElement);
+        }
+        
+        // 生成AI回复
+        function generateAIReply(message) {
+            // 简单的关键词匹配
+            const lowerMessage = message.toLowerCase();
+            
+            if (lowerMessage.includes('你好') || lowerMessage.includes('hi') || lowerMessage.includes('hello')) {
+                return '你好！我是你的AI助手，可以帮你分析作息安排并提供建议。有什么我能帮你的吗？';
+            }
+            
+            if (lowerMessage.includes('谢谢') || lowerMessage.includes('感谢')) {
+                return '不客气！很高兴能帮到你。';
+            }
+            
+            if (lowerMessage.includes('总结') || lowerMessage.includes('分析')) {
+                updateAISummary();
+                return '我已经更新了今日总结，你可以在上方查看。';
+            }
+            
+            
+            if (lowerMessage.includes('效率') || lowerMessage.includes('提高')) {
+                return '提高效率的一些建议：1. 使用番茄工作法（25分钟专注工作，5分钟休息）；2. 设定明确的目标和优先级；3. 减少干扰，创建专注环境；4. 保持充足的睡眠和适当的运动。你想了解更多关于哪方面的建议吗？';
+            }
+            
+            if (lowerMessage.includes('休息') || lowerMessage.includes('放松')) {
+                return '适当的休息对提高效率非常重要！建议：1. 每工作1-2小时休息15-20分钟；2. 进行短暂的身体活动，如伸展或散步；3. 尝试冥想或深呼吸练习；4. 保证充足的睡眠（7-8小时）。';
+            }
+            
+            if (lowerMessage.includes('运动') || lowerMessage.includes('锻炼')) {
+                return '运动对身心健康都很重要！建议：1. 每天至少进行30分钟中等强度的运动；2. 可以选择散步、跑步、游泳、瑜伽等；3. 每周进行2-3次力量训练；4. 找到你喜欢的运动方式，这样更容易坚持。';
+            }
+            
+            if (lowerMessage.includes('压力') || lowerMessage.includes('焦虑')) {
+                return '面对压力和焦虑，可以尝试：1. 深呼吸和冥想练习；2. 保持规律的作息和适当的运动；3. 分解任务，设定可实现的目标；4. 与朋友或家人交流；5. 必要时寻求专业帮助。记住，适当的压力可以促进成长，但过度压力需要及时调整。';
+            }
+            
+            if (lowerMessage.includes('时间管理') || lowerMessage.includes('时间分配')) {
+                return '有效的时间管理建议：1. 使用四象限法则区分重要紧急的任务；2. 设定明确的目标和优先级；3. 使用日历和待办事项清单；4. 避免多任务处理，专注于一项任务；5. 定期回顾和调整时间分配；6. 学会说"不"，避免过度承诺。';
+            }
+            
+            // 默认回复
+            return '抱歉，我不太理解你的问题。你可以尝试询问关于作息安排、时间管理、效率提升等方面的问题，我会尽力帮助你。';
+        }
+        
+        // 显示活动模态框
+        function showActivityModal(activity, date, startTime, endTime) {
+            const modal = document.getElementById('activityModal');
+            const modalTitle = document.getElementById('modalTitle');
+            const deleteButton = document.getElementById('deleteActivity');
+            
+            // 重置表单
+            document.getElementById('activityForm').reset();
+            
+            if (activity) {
+                // 编辑现有活动
+                modalTitle.textContent = '编辑活动';
+                deleteButton.classList.remove('hidden');
+                
+                document.getElementById('activityId').value = activity.id;
+                document.getElementById('activityTitle').value = activity.title;
+                document.getElementById('activityType').value = activity.type;
+                document.getElementById('activityDate').value = activity.date;
+                document.getElementById('activityStart').value = activity.startTime;
+                document.getElementById('activityEnd').value = activity.endTime;
+                document.getElementById('activityNotes').value = activity.notes || '';
+            } else {
+                // 添加新活动
+                modalTitle.textContent = '添加活动';
+                deleteButton.classList.add('hidden');
+                
+                document.getElementById('activityId').value = '';
+                document.getElementById('activityDate').value = date;
+                document.getElementById('activityStart').value = startTime;
+                document.getElementById('activityEnd').value = endTime;
+            }
+            
+            modal.classList.remove('hidden');
+        }
+        
+        // 编辑活动
+        function editActivity(activity) {
+            // 如果是AI计划，点击后转换为正式活动（移除isPlan标记）
+            if (activity.isPlan) {
+                activity.isPlan = false;
+                saveActivities();
+                renderCalendar();
+            }
+            
+            showActivityModal(activity, activity.date, activity.startTime, activity.endTime);
+        }
+        
+        // 设置提醒
+        function setupReminder() {
+            if (!userSettings.enableReminders) {
+                return;
+            }
+            
+            // 清除现有定时器
+            if (window.reminderTimer) {
+                clearTimeout(window.reminderTimer);
+            }
+            
+            // 设置新的定时器
+            const checkReminder = () => {
+                const now = new Date();
+                const reminderTime = userSettings.reminderTime.split(':');
+                const reminderHour = parseInt(reminderTime[0]);
+                const reminderMinute = parseInt(reminderTime[1]);
+                
+                // 如果当前时间接近提醒时间（前后1分钟）
+                if (now.getHours() === reminderHour && now.getMinutes() >= reminderMinute - 1 && now.getMinutes() <= reminderMinute + 1) {
+                    const today = formatDate(now);
+                    const todayActivities = activities.filter(a => a.date === today);
+                    
+                    // 如果今天没有活动记录，显示提醒
+                    if (todayActivities.length === 0) {
+                        showNotification();
+                    }
+                }
+                
+                // 每分钟检查一次
+                window.reminderTimer = setTimeout(checkReminder, 60 * 1000);
+            };
+            
+            // 立即开始检查
+            checkReminder();
+        }
+        
+        // 显示通知
+        function showNotification() {
+            const notification = document.getElementById('reminderNotification');
+            notification.classList.remove('translate-y-full', 'opacity-0');
+        }
+        
+        // 隐藏通知
+        function hideNotification() {
+            const notification = document.getElementById('reminderNotification');
+            notification.classList.add('translate-y-full', 'opacity-0');
+        }
+        
+        // 修改 saveActivities 函数
+        async function saveActivities() {
+            try {
+                for (const activity of activities) {
+                    const activityData = {
+                        title: activity.title,
+                        type: activity.type,
+                        date: activity.date,
+                        start_time: activity.startTime,
+                        end_time: activity.endTime,
+                        notes: activity.notes,
+                        is_plan: activity.isPlan || false
+                    };
+                    
+                    if (activity.id) {
+                        try {
+                            // 先尝试获取活动，确认是否存在
+                            await window.activityAPI.getById(activity.id);
+                            // 如果存在，更新
+                            await window.activityAPI.update(activity.id, activityData);
+                        } catch (error) {
+                            // 如果获取或更新失败，创建新活动
+                            console.warn(`活动不存在，创建新活动: ${activity.id}`);
+                            const created = await window.activityAPI.create({ ...activityData, id: activity.id });
+                            activity.id = created.id;
+                        }
+                    } else {
+                        // 创建新活动
+                        const created = await window.activityAPI.create(activityData);
+                        activity.id = created.id;
+                    }
+                }
+            } catch (error) {
+                console.error('保存活动失败:', error);
+                localStorage.setItem('activities', JSON.stringify(activities));
+            }
+        }
+
+        async function loadActivities() {
+            try {
+                const apiActivities = await window.activityAPI.getAll();
+                console.log('📊 从后端加载的活动:', apiActivities);
+                
+                activities = apiActivities.map(a => {
+                    // ⭐ 明确读取 is_plan（兼容布尔值和数字 0/1）
+                    let isPlan = false;
+                    if (a.is_plan === true || a.is_plan === 1 || a.is_plan === '1') {
+                        isPlan = true;
+                    }
+                    
+                    return {
+                        id: a.id,
+                        title: a.title,
+                        type: a.type,
+                        date: a.date,
+                        startTime: a.start_time,
+                        endTime: a.end_time,
+                        notes: a.notes,
+                        isPlan: isPlan  // ✅ 确保读取到 is_plan
+                    };
+                });
+                
+                // 打印计划活动以便调试
+                const planActivities = activities.filter(a => a.isPlan);
+                console.log(`✅ 加载成功 ${activities.length} 条活动，其中计划活动 ${planActivities.length} 条`);
+                if (planActivities.length > 0) {
+                    console.log('📌 计划活动列表:');
+                    planActivities.forEach(a => {
+                        console.log(`   ${a.date} ${a.startTime}-${a.endTime} ${a.title}`);
+                    });
+                }
+                
+            } catch (error) {
+                console.error('❌ 加载失败:', error);
+                const savedActivities = localStorage.getItem('activities');
+                activities = savedActivities ? JSON.parse(savedActivities) : [];
+            }
+        }
+
+        // 修改 saveSettings 函数
+        async function saveSettings() {
+            try {
+                // 转换为后端命名格式
+                const settingsData = {
+                    reminder_time: userSettings.reminderTime,
+                    enable_reminders: userSettings.enableReminders,
+                    enable_ai: userSettings.enableAI
+                };
+                await window.settingsAPI.update(settingsData);
+            } catch (error) {
+                console.error('保存设置失败:', error);
+                localStorage.setItem('userSettings', JSON.stringify(userSettings));
+            }
+        }
+
+        // 修改 loadSettings 函数
+        async function loadSettings() {
+            try {
+                const settings = await window.settingsAPI.get();
+                // 转换为前端的驼峰命名
+                userSettings = {
+                    reminderTime: settings.reminder_time,
+                    enableReminders: settings.enable_reminders,
+                    enableAI: settings.enable_ai
+                };
+            } catch (error) {
+                console.error('加载设置失败:', error);
+                const savedSettings = localStorage.getItem('userSettings');
+                if (savedSettings) {
+                    userSettings = { ...userSettings, ...JSON.parse(savedSettings) };
+                }
+            }
+        }
+        
+        // 工具函数
+        
+        // 生成唯一ID
+        function generateId() {
+            return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+        }
+        
+         // 获取一周的起始日期（周一）
+        function getStartOfWeek(date) {
+            const d = new Date(date);
+            d.setHours(0, 0, 0, 0);  // ⭐ 确保时间部分为 00:00:00
+            const day = d.getDay();
+            const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+            return new Date(d.setDate(diff));
+        }
+        
+        // 添加天数
+        function addDays(date, days) {
+            const result = new Date(date);
+            result.setDate(result.getDate() + days);
+            return result;
+        }
+        
+        // 格式化日期（YYYY-MM-DD）
+        function formatDate(date) {
+            let d;
+            if (typeof date === 'string') {
+                // ⭐ 兼容字符串格式 "2026-06-15"
+                d = new Date(date + 'T00:00:00');  // 添加时间，确保按本地时间解析
+            } else {
+                d = new Date(date);
+            }
+            const year = d.getFullYear();
+            const month = (d.getMonth() + 1).toString().padStart(2, '0');
+            const day = d.getDate().toString().padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+        
+        // 格式化日期显示（月日）
+        function formatDateForDisplay(dateString) {
+            const date = new Date(dateString);
+            const month = date.getMonth() + 1;
+            const day = date.getDate();
+            return `${month}月${day}日`;
+        }
+        
+        // 获取星期几名称
+        function getDayName(date, short = false) {
+            const dayNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+            const shortDayNames = ['日', '一', '二', '三', '四', '五', '六'];
+            return short ? shortDayNames[date.getDay()] : dayNames[date.getDay()];
+        }
+        
+        // 判断两个日期是否是同一天
+        function isSameDay(date1, date2) {
+            return date1.getFullYear() === date2.getFullYear() &&
+                   date1.getMonth() === date2.getMonth() &&
+                   date1.getDate() === date2.getDate();
+        }
+        
+        // 从时间字符串获取小时
+        function getHourFromTime(timeString) {
+            return parseInt(timeString.split(':')[0]);
+        }
+        
+        // 从时间字符串获取分钟
+        function getMinuteFromTime(timeString) {
+            return parseInt(timeString.split(':')[1]);
+        }
+        
+        // 计算两个时间之间的分钟差
+        function calculateDuration(startTime, endTime) {
+            const startHour = getHourFromTime(startTime);
+            const startMinute = getMinuteFromTime(startTime);
+            const endHour = getHourFromTime(endTime);
+            const endMinute = getMinuteFromTime(endTime);
+            
+            let duration = (endHour * 60 + endMinute) - (startHour * 60 + startMinute);
+            
+            // 处理跨天的情况（结束时间早于开始时间）
+            if (duration < 0) {
+                duration += 24 * 60; // 加上24小时的分钟数
+            }
+            
+            return duration;
+        }
+        
+        // 格式化时间
+        function formatTime(date) {
+            const hours = date.getHours().toString().padStart(2, '0');
+            const minutes = date.getMinutes().toString().padStart(2, '0');
+            return `${hours}:${minutes}`;
+        }
+        
+        // 给时间添加分钟
+        function addMinutes(timeString, minutes) {
+            const [hours, mins] = timeString.split(':').map(Number);
+            const date = new Date();
+            date.setHours(hours, mins + minutes, 0, 0);
+            return formatTime(date);
+        }
+        
+        // 从时间减去分钟
+        function subtractMinutes(timeString, minutes) {
+            return addMinutes(timeString, -minutes);
+        }
+    </script>
+</body>
+</html>
