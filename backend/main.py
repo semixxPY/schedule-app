@@ -9,10 +9,11 @@ from database import engine, get_db
 # 导入AI服务
 from ai_service import AIService
 import json
+import os
 
-# ===== 配置AI服务 =====
-AI_API_KEY = "ark-0e6da7b4-9524-4d24-b1b6-27a7cc1412ad-1d7b2"
-AI_MODEL = "doubao-seed-2-0-lite-260428"
+# ===== 配置AI服务（优先从环境变量读取，兼容本地和线上部署）=====
+AI_API_KEY = os.environ.get("AI_API_KEY", "ark-0e6da7b4-9524-4d24-b1b6-27a7cc1412ad-1d7b2")
+AI_MODEL = os.environ.get("AI_MODEL", "doubao-seed-2-0-lite-260428")
 ai_service = AIService(api_key=AI_API_KEY, model=AI_MODEL)
 # 创建数据库表
 models.Base.metadata.create_all(bind=engine)
