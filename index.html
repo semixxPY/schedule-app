@@ -1474,16 +1474,32 @@
                 try {
                     if (id) {
                         await window.activityAPI.update(id, activityData);
+                        // 只更新本地对应条目
+                        const activity = activities.find(a => a.id === id);
+                        if (activity) {
+                            activity.title = title;
+                            activity.type = type;
+                            activity.date = date;
+                            activity.startTime = startTime;
+                            activity.endTime = endTime;
+                            activity.notes = notes;
+                        }
                     } else {
-                        await window.activityAPI.create({ ...activityData, id: generateId() });
+                        const newId = generateId();
+                        const created = await window.activityAPI.create({ ...activityData, id: newId });
+                        // 把后端返回的活动推入本地数组
+                        activities.push({
+                            id: created.id || newId,
+                            title, type, date,
+                            startTime, endTime,
+                            notes: notes || '',
+                            isPlan: false
+                        });
                     }
                 } catch (error) {
                     showAlertDialog('保存失败', '请检查网络或后端服务<br><br>' + error.message, '❌');
                     return;
                 }
-
-                // 从后端重新加载确保数据一致
-                await loadActivities();
 
                 // 如果活动日期不在当前周，切换到该周
                 const activityDate = new Date(date + 'T00:00:00');
