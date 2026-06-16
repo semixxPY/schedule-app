@@ -612,6 +612,29 @@ def clean_expired_plans(db: Session = Depends(get_db), current_user: models.User
         "deleted_count": deleted_count
     }
 
+# ============ 去重接口（清理完全相同的重复活动）============
+@app.post("/api/activities/dedup")
+def dedup_activities(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    all_acts = db.query(models.Activity)\
+        .filter(models.Activity.user_id == current_user.id)\
+        .order_by(models.Activity.date, models.Activity.start_time, models.Activity.id)\
+        .all()
+
+    seen = {}
+    to_delete = []
+    for act in all_acts:
+        key = (act.date, act.start_time, act.end_time, act.title, act.type)
+        if key in seen:
+            to_delete.append(act)
+        else:
+            seen[key] = act.id
+
+    for act in to_delete:
+        db.delete(act)
+    db.commit()
+
+    return {"deleted": len(to_delete), "message": f"已清理 {len(to_delete)} 条重复活动"}
+
 # ============ 主程序入口 ============
 if __name__ == "__main__":
     import uvicorn
