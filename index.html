@@ -1446,7 +1446,7 @@
             });
             
             // 保存活动
-            document.getElementById('activityForm').addEventListener('submit', (e) => {
+            document.getElementById('activityForm').addEventListener('submit', async (e) => {
                 e.preventDefault();
 
                 const id = document.getElementById('activityId').value;
@@ -1463,53 +1463,39 @@
                     return;
                 }
 
-                if (id) {
-                    // 更新现有活动
-                    const activity = activities.find(a => a.id === id);
-                    if (activity) {
-                        activity.title = title;
-                        activity.type = type;
-                        activity.date = date;
-                        activity.startTime = startTime;
-                        activity.endTime = endTime;
-                        activity.notes = notes;
-                    }
-                } else {
-                    // 创建新活动
-                    const newActivity = {
-                        id: generateId(),
-                        title: title,
-                        type: type,
-                        date: date,
-                        startTime: startTime,
-                        endTime: endTime,
-                        notes: notes
-                    };
+                const activityData = {
+                    title, type, date,
+                    start_time: startTime,
+                    end_time: endTime,
+                    notes: notes || '',
+                    is_plan: false
+                };
 
-                    activities.push(newActivity);
-
-                    // 如果新活动的日期不在当前周，切换到该活动所在的周，方便用户立即查看
-                    const activityDate = new Date(date + 'T00:00:00');
-                    const startOfWeek = getStartOfWeek(currentDate);
-                    const endOfWeek = addDays(startOfWeek, 6);
-                    if (activityDate < startOfWeek || activityDate > endOfWeek) {
-                        currentDate = activityDate;
+                try {
+                    if (id) {
+                        await window.activityAPI.update(id, activityData);
+                    } else {
+                        await window.activityAPI.create({ ...activityData, id: generateId() });
                     }
+                } catch (error) {
+                    showAlertDialog('保存失败', '请检查网络或后端服务<br><br>' + error.message, '❌');
+                    return;
                 }
 
-                // 保存活动
-                saveActivities();
+                // 从后端重新加载确保数据一致
+                await loadActivities();
 
-                // 重新渲染日历（可能已切换周）
+                // 如果活动日期不在当前周，切换到该周
+                const activityDate = new Date(date + 'T00:00:00');
+                const startOfWeek = getStartOfWeek(currentDate);
+                const endOfWeek = addDays(startOfWeek, 6);
+                if (activityDate < startOfWeek || activityDate > endOfWeek) {
+                    currentDate = activityDate;
+                }
+
                 renderCalendar();
-
-                // 更新统计信息
                 updateStatistics();
-
-                // 更新AI总结和计划
                 updateAISummary();
-
-                // 关闭模态框
                 document.getElementById('activityModal').classList.add('hidden');
             });
             
@@ -2015,13 +2001,6 @@
         
         // 编辑活动
         function editActivity(activity) {
-            // 如果是AI计划，点击后转换为正式活动（移除isPlan标记）
-            if (activity.isPlan) {
-                activity.isPlan = false;
-                saveActivities();
-                renderCalendar();
-            }
-            
             showActivityModal(activity, activity.date, activity.startTime, activity.endTime);
         }
         
