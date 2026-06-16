@@ -84,21 +84,16 @@ class AuthRequest(schemas.BaseModel):
 
 @app.post("/api/auth/register")
 def register(body: AuthRequest, db: Session = Depends(get_db)):
-    try:
-        if db.query(models.User).filter(models.User.username == body.username).first():
-            raise HTTPException(status_code=400, detail="用户名已存在")
-        user = models.User(
-            username=body.username,
-            password_hash=hash_password(body.password)
-        )
-        db.add(user)
-        db.commit()
-        db.refresh(user)
-        return {"token": create_token(user.id), "user_id": user.id, "username": user.username}
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"注册失败: {type(e).__name__}: {str(e)}")
+    if db.query(models.User).filter(models.User.username == body.username).first():
+        raise HTTPException(status_code=400, detail="用户名已存在")
+    user = models.User(
+        username=body.username,
+        password_hash=hash_password(body.password)
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return {"token": create_token(user.id), "user_id": user.id, "username": user.username}
 
 @app.post("/api/auth/login")
 def login(body: AuthRequest, db: Session = Depends(get_db)):
