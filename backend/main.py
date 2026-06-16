@@ -371,10 +371,10 @@ def generate_plan_by_rules(date_str, activity_summary):
     """
     import random
     
-    # 分析用户习惯
-    work_count = len(activity_summary.get('学习/工作', []))
-    rest_count = len(activity_summary.get('休息', []))
-    exercise_count = len(activity_summary.get('运动/娱乐', []))
+    # 分析用户习惯（activity_summary 是 list of dict）
+    work_count = len([a for a in activity_summary if a.get('type') == '学习/工作'])
+    rest_count = len([a for a in activity_summary if a.get('type') == '休息'])
+    exercise_count = len([a for a in activity_summary if a.get('type') == '运动/娱乐'])
     
     # 根据历史数据调整比例
     plans = []
