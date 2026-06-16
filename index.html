@@ -1816,7 +1816,7 @@
                         if (result.activities && result.activities.length > 0) {
                             reply += `共生成 ${result.activities.length} 个活动安排：\n`;
                             result.activities.forEach((act, i) => {
-                                reply += `${i + 1}. ${act.startTime}~${act.endTime} 「${act.title}」\n`;
+                                reply += `${i + 1}. ${act.start_time}~${act.end_time} 「${act.title}」\n`;
                             });
                         } else if (result.message) {
                             reply += result.message;
