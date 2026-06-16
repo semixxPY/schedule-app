@@ -1,22 +1,64 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Security
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 from datetime import datetime, timedelta
+from jose import JWTError, jwt
+from passlib.context import CryptContext
 import json
 import models
 import schemas
 from database import engine, get_db
-# 导入AI服务
 from ai_service import AIService
-import json
 import os
 
-# ===== 配置AI服务（优先从环境变量读取，兼容本地和线上部署）=====
+# ===== JWT 配置 =====
+SECRET_KEY = os.environ.get("SECRET_KEY", "change-me-in-production-please")
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_DAYS = 30
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+bearer_scheme = HTTPBearer(auto_error=False)
+
+def create_token(user_id: int) -> str:
+    return jwt.encode({"user_id": user_id}, SECRET_KEY, algorithm=ALGORITHM)
+
+def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Security(bearer_scheme),
+    db: Session = Depends(get_db)
+):
+    if not credentials:
+        raise HTTPException(status_code=401, detail="未登录，请先登录")
+    try:
+        payload = jwt.decode(credentials.credentials, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id: int = payload.get("user_id")
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Token 无效或已过期")
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=401, detail="用户不存在")
+    return user
+
+# ===== 配置AI服务 =====
 AI_API_KEY = os.environ.get("AI_API_KEY", "ark-0e6da7b4-9524-4d24-b1b6-27a7cc1412ad-1d7b2")
 AI_MODEL = os.environ.get("AI_MODEL", "doubao-seed-2-0-lite-260428")
 ai_service = AIService(api_key=AI_API_KEY, model=AI_MODEL)
+
 # 创建数据库表
 models.Base.metadata.create_all(bind=engine)
+
+# 对已有表做字段迁移（新增 user_id 列）
+def run_migrations():
+    with engine.connect() as conn:
+        for table, col in [("activities", "user_id INTEGER"), ("user_settings", "user_id INTEGER")]:
+            try:
+                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col}"))
+                conn.commit()
+            except Exception:
+                pass  # 列已存在
+
+run_migrations()
 
 # 创建FastAPI应用
 app = FastAPI(title="作息安排记录 API", version="1.0.0")
@@ -30,46 +72,71 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ==================== 认证接口 ====================
+
+class AuthRequest(schemas.BaseModel):
+    username: str
+    password: str
+
+@app.post("/api/auth/register")
+def register(body: AuthRequest, db: Session = Depends(get_db)):
+    if db.query(models.User).filter(models.User.username == body.username).first():
+        raise HTTPException(status_code=400, detail="用户名已存在")
+    user = models.User(
+        username=body.username,
+        password_hash=pwd_context.hash(body.password)
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return {"token": create_token(user.id), "user_id": user.id, "username": user.username}
+
+@app.post("/api/auth/login")
+def login(body: AuthRequest, db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.username == body.username).first()
+    if not user or not pwd_context.verify(body.password, user.password_hash):
+        raise HTTPException(status_code=401, detail="用户名或密码错误")
+    return {"token": create_token(user.id), "user_id": user.id, "username": user.username}
+
 # ==================== 活动相关接口 ====================
 
 # 获取所有活动
 @app.get("/api/activities", response_model=list[schemas.ActivityResponse])
-def get_all_activities(db: Session = Depends(get_db)):
-    return db.query(models.Activity).order_by(models.Activity.date, models.Activity.start_time).all()
+def get_all_activities(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    return db.query(models.Activity).filter(models.Activity.user_id == current_user.id).order_by(models.Activity.date, models.Activity.start_time).all()
 
 # 获取单个活动
 @app.get("/api/activities/{activity_id}", response_model=schemas.ActivityResponse)
-def get_activity(activity_id: str, db: Session = Depends(get_db)):
-    activity = db.query(models.Activity).filter(models.Activity.id == activity_id).first()
+def get_activity(activity_id: str, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    activity = db.query(models.Activity).filter(models.Activity.id == activity_id, models.Activity.user_id == current_user.id).first()
     if not activity:
         raise HTTPException(status_code=404, detail="活动不存在")
     return activity
 
 # 创建活动
 @app.post("/api/activities", response_model=schemas.ActivityResponse)
-def create_activity(activity: schemas.ActivityCreate, db: Session = Depends(get_db)):
-    # 检查是否已存在相同ID的活动
+def create_activity(activity: schemas.ActivityCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     existing = db.query(models.Activity).filter(models.Activity.id == activity.id).first()
     if existing:
         raise HTTPException(status_code=400, detail="活动ID已存在")
-    
-    # 创建新活动
-    db_activity = models.Activity(**activity.model_dump())
+
+    data = activity.model_dump()
+    data['user_id'] = current_user.id
+    db_activity = models.Activity(**data)
     db.add(db_activity)
     db.commit()
     db.refresh(db_activity)
-    
-    # 返回格式化后的响应
+
     print(f"创建活动: {db_activity.id}, created_at: {db_activity.created_at}, updated_at: {db_activity.updated_at}")
     return schemas.ActivityResponse.model_validate(db_activity)
 
 # 更新活动
 # ============ 更新活动（支持移动/复制时修改日期和时间）============
 @app.put("/api/activities/{activity_id}", response_model=schemas.ActivityResponse)
-def update_activity(activity_id: str, activity_update: schemas.ActivityUpdate, db: Session = Depends(get_db)):
-    
-    activity = db.query(models.Activity).filter(models.Activity.id == activity_id).first()
-    
+def update_activity(activity_id: str, activity_update: schemas.ActivityUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+
+    activity = db.query(models.Activity).filter(models.Activity.id == activity_id, models.Activity.user_id == current_user.id).first()
+
     if not activity:
         raise HTTPException(status_code=404, detail=f"活动不存在: {activity_id}")
     
@@ -86,19 +153,20 @@ def update_activity(activity_id: str, activity_update: schemas.ActivityUpdate, d
     return schemas.ActivityResponse.model_validate(activity)
 # 删除活动
 @app.delete("/api/activities/{activity_id}")
-def delete_activity(activity_id: str, db: Session = Depends(get_db)):
-    activity = db.query(models.Activity).filter(models.Activity.id == activity_id).first()
+def delete_activity(activity_id: str, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    activity = db.query(models.Activity).filter(models.Activity.id == activity_id, models.Activity.user_id == current_user.id).first()
     if not activity:
         raise HTTPException(status_code=404, detail="活动不存在")
-    
+
     db.delete(activity)
     db.commit()
     return {"message": "活动删除成功"}
 
 # 按日期范围查询活动
 @app.get("/api/activities/date-range", response_model=list[schemas.ActivityResponse])
-def get_activities_by_date_range(start_date: str, end_date: str, db: Session = Depends(get_db)):
+def get_activities_by_date_range(start_date: str, end_date: str, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     activities = db.query(models.Activity)\
+        .filter(models.Activity.user_id == current_user.id)\
         .filter(models.Activity.date >= start_date)\
         .filter(models.Activity.date <= end_date)\
         .order_by(models.Activity.date, models.Activity.start_time)\
@@ -109,11 +177,10 @@ def get_activities_by_date_range(start_date: str, end_date: str, db: Session = D
 
 # 获取用户设置
 @app.get("/api/settings", response_model=schemas.UserSettingsResponse)
-def get_user_settings(db: Session = Depends(get_db)):
-    settings = db.query(models.UserSettings).first()
+def get_user_settings(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    settings = db.query(models.UserSettings).filter(models.UserSettings.user_id == current_user.id).first()
     if not settings:
-        # 如果没有设置，创建默认设置
-        settings = models.UserSettings()
+        settings = models.UserSettings(user_id=current_user.id)
         db.add(settings)
         db.commit()
         db.refresh(settings)
@@ -121,17 +188,18 @@ def get_user_settings(db: Session = Depends(get_db)):
 
 # 更新用户设置
 @app.put("/api/settings", response_model=schemas.UserSettingsResponse)
-def update_user_settings(settings_update: schemas.UserSettingsBase, db: Session = Depends(get_db)):
-    settings = db.query(models.UserSettings).first()
+def update_user_settings(settings_update: schemas.UserSettingsBase, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    settings = db.query(models.UserSettings).filter(models.UserSettings.user_id == current_user.id).first()
     if not settings:
-        # 如果没有设置，创建新设置
-        settings = models.UserSettings(**settings_update.model_dump())
+        data = settings_update.model_dump()
+        data['user_id'] = current_user.id
+        settings = models.UserSettings(**data)
+        db.add(settings)
     else:
-        # 更新现有设置
         update_data = settings_update.model_dump(exclude_unset=True)
         for key, value in update_data.items():
             setattr(settings, key, value)
-    
+
     db.commit()
     db.refresh(settings)
     return settings
@@ -142,7 +210,7 @@ def health_check():
     return {"status": "healthy", "timestamp": datetime.now().isoformat()}
 # ============ AI生成计划接口 ============
 @app.post("/api/ai/generate-plan")
-async def generate_ai_plan(target: str = "tomorrow", preference: str = "", db: Session = Depends(get_db)):
+async def generate_ai_plan(target: str = "tomorrow", preference: str = "", db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     from datetime import datetime, timedelta
     
     today = datetime.now()
@@ -156,6 +224,7 @@ async def generate_ai_plan(target: str = "tomorrow", preference: str = "", db: S
     today_str = today.strftime('%Y-%m-%d')
     
     week_activities = db.query(models.Activity).\
+        filter(models.Activity.user_id == current_user.id).\
         filter(models.Activity.date >= week_ago_str).\
         filter(models.Activity.date <= today_str).\
         order_by(models.Activity.date, models.Activity.start_time).all()
@@ -211,6 +280,7 @@ async def generate_ai_plan(target: str = "tomorrow", preference: str = "", db: S
         
         # 删除明天已存在的计划
         existing = db.query(models.Activity).\
+            filter(models.Activity.user_id == current_user.id).\
             filter(models.Activity.date == tomorrow_str).\
             filter(models.Activity.is_plan == True).all()
         for plan in existing:
@@ -227,7 +297,8 @@ async def generate_ai_plan(target: str = "tomorrow", preference: str = "", db: S
                 activity_type = '学习/工作'
             
             new_act = models.Activity(
-                id=f"ai-{tomorrow_str}-{idx+1:02d}",
+                id=f"ai-{tomorrow_str}-{idx+1:02d}-{current_user.id}",
+                user_id=current_user.id,
                 title=plan.get('title', '活动'),
                 type=activity_type,
                 date=tomorrow_str,
@@ -266,12 +337,12 @@ async def generate_ai_plan(target: str = "tomorrow", preference: str = "", db: S
     
 # ============ AI聊天接口 ============
 @app.post("/api/ai/chat")
-async def ai_chat(message: str, db: Session = Depends(get_db)):
+async def ai_chat(message: str, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     from datetime import datetime
     today_str = datetime.now().strftime('%Y-%m-%d')
-    
-    # 获取今天的活动
+
     today_activities = db.query(models.Activity).\
+        filter(models.Activity.user_id == current_user.id).\
         filter(models.Activity.date == today_str).\
         order_by(models.Activity.start_time).all()
     
@@ -336,7 +407,8 @@ def generate_plan_by_rules(date_str, activity_summary):
 async def adjust_plan(
     message: str,
     target_date: str = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
 ):
     """
     根据用户的聊天消息调整计划
@@ -349,6 +421,7 @@ async def adjust_plan(
     
     # 获取当前计划
     current_plans = db.query(models.Activity)\
+        .filter(models.Activity.user_id == current_user.id)\
         .filter(models.Activity.date == target_date)\
         .filter(models.Activity.is_plan == True)\
         .order_by(models.Activity.start_time)\
@@ -402,7 +475,8 @@ async def adjust_plan(
                 adjusted = True
         # 添加新的起床时间
         new_activity = models.Activity(
-            id=f"plan-{target_date}-lazy",
+            id=f"plan-{target_date}-lazy-{current_user.id}",
+            user_id=current_user.id,
             title='睡懒觉~',
             type='休息',
             date=target_date,
@@ -418,6 +492,7 @@ async def adjust_plan(
     
     # 获取更新后的计划
     updated_plans = db.query(models.Activity)\
+        .filter(models.Activity.user_id == current_user.id)\
         .filter(models.Activity.date == target_date)\
         .filter(models.Activity.is_plan == True)\
         .order_by(models.Activity.start_time)\
@@ -444,9 +519,10 @@ async def adjust_plan(
 
 # ============ 辅助功能：导出数据 ============
 @app.get("/api/activities/plans/{date}")
-def get_plans_by_date(date: str, db: Session = Depends(get_db)):
+def get_plans_by_date(date: str, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     """获取指定日期的计划活动"""
     plans = db.query(models.Activity)\
+        .filter(models.Activity.user_id == current_user.id)\
         .filter(models.Activity.date == date)\
         .filter(models.Activity.is_plan == True)\
         .order_by(models.Activity.start_time)\
@@ -469,8 +545,8 @@ def get_plans_by_date(date: str, db: Session = Depends(get_db)):
     }
 # ============ 确认计划接口（点击计划后把is_plan改为0）============
 @app.put("/api/activities/{activity_id}/confirm")
-def confirm_activity(activity_id: str, db: Session = Depends(get_db)):
-    activity = db.query(models.Activity).filter(models.Activity.id == activity_id).first()
+def confirm_activity(activity_id: str, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    activity = db.query(models.Activity).filter(models.Activity.id == activity_id, models.Activity.user_id == current_user.id).first()
     
     if not activity:
         raise HTTPException(status_code=404, detail="活动不存在")
@@ -490,18 +566,14 @@ def confirm_activity(activity_id: str, db: Session = Depends(get_db)):
 
 # ============ 自动清理过期计划接口（加载页面时调用）============
 @app.post("/api/ai/clean-expired-plans")
-def clean_expired_plans(db: Session = Depends(get_db)):
+def clean_expired_plans(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     from datetime import datetime
-    
+
     now = datetime.now()
     today_str = now.strftime('%Y-%m-%d')
     current_time = now.strftime('%H:%M')
-    
-    # print(f"\n🧹 清理过期计划...")
-    # print(f"   当前日期: {today_str}, 当前时间: {current_time}")
-    
-    # 找出所有 is_plan=1 的活动
-    plan_activities = db.query(models.Activity).filter(models.Activity.is_plan == True).all()
+
+    plan_activities = db.query(models.Activity).filter(models.Activity.user_id == current_user.id, models.Activity.is_plan == True).all()
     
     deleted_count = 0
     for activity in plan_activities:
