@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from datetime import datetime, timedelta
 from jose import JWTError, jwt
-from passlib.context import CryptContext
+import bcrypt
 import json
 import models
 import schemas
@@ -18,8 +18,13 @@ SECRET_KEY = os.environ.get("SECRET_KEY", "change-me-in-production-please")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 30
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 bearer_scheme = HTTPBearer(auto_error=False)
+
+def hash_password(password: str) -> str:
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+
+def verify_password(password: str, hashed: str) -> bool:
+    return bcrypt.checkpw(password.encode(), hashed.encode())
 
 def create_token(user_id: int) -> str:
     return jwt.encode({"user_id": user_id}, SECRET_KEY, algorithm=ALGORITHM)
@@ -83,7 +88,7 @@ def register(body: AuthRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="用户名已存在")
     user = models.User(
         username=body.username,
-        password_hash=pwd_context.hash(body.password)
+        password_hash=hash_password(body.password)
     )
     db.add(user)
     db.commit()
@@ -93,7 +98,7 @@ def register(body: AuthRequest, db: Session = Depends(get_db)):
 @app.post("/api/auth/login")
 def login(body: AuthRequest, db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.username == body.username).first()
-    if not user or not pwd_context.verify(body.password, user.password_hash):
+    if not user or not verify_password(body.password, user.password_hash):
         raise HTTPException(status_code=401, detail="用户名或密码错误")
     return {"token": create_token(user.id), "user_id": user.id, "username": user.username}
 
