@@ -91,17 +91,12 @@ div.bg-white.rounded-lg.shadow-sm {
     padding: 12px;
     min-height: auto !important;
 }
-/* ---------- 日历格子：定位容器（默认不拦截点击，让活动块能被点到） ---------- */
+/* ---------- 日历格子：定位容器 ---------- */
 .calendar-cell {
     position: relative !important;
     overflow: visible !important;
     z-index: 1;
-    pointer-events: none !important;   /* ⭐ 默认：不拦截点击，让活动块可以被点到 */
-}
-
-/* ⭐ 拖拽模式下：临时让格子能被 elementsFromPoint 找到 */
-body.dragging-mode .calendar-cell {
-    pointer-events: auto !important;
+    pointer-events: auto;
 }
 
 /* ---------- 日历活动块：整个区域都可点击 ---------- */
