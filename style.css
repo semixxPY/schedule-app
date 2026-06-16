@@ -95,7 +95,6 @@ div.bg-white.rounded-lg.shadow-sm {
 .calendar-cell {
     position: relative !important;
     overflow: visible !important;
-    z-index: 1;
     pointer-events: auto;
 }
 

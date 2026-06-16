@@ -81,53 +81,6 @@
                     </div>
                 </div>
                 
-                <!-- 底部统计信息 -->
-                <div class="mt-4 bg-white rounded-lg shadow-sm p-4">
-                    <h3 class="text-lg font-medium mb-3">本周统计</h3>
-                    <div class="flex flex-wrap">
-                        <div class="w-full md:w-1/2">
-                            <canvas id="weeklyChart" height="200"></canvas>
-                        </div>
-                        <div class="w-full md:w-1/2 pl-0 md:pl-4 mt-4 md:mt-0">
-                            <div class="space-y-2">
-                                <div class="flex items-center justify-between">
-                                    <div class="flex items-center">
-                                        <div class="w-3 h-3 rounded-full bg-primary mr-2"></div>
-                                        <span>学习/工作</span>
-                                    </div>
-                                    <span id="studyWorkTime" class="font-medium">0小时</span>
-                                </div>
-                                <div class="flex items-center justify-between">
-                                    <div class="flex items-center">
-                                        <div class="w-3 h-3 rounded-full bg-secondary mr-2"></div>
-                                        <span>休息</span>
-                                    </div>
-                                    <span id="restTime" class="font-medium">0小时</span>
-                                </div>
-                                <div class="flex items-center justify-between">
-                                    <div class="flex items-center">
-                                        <div class="w-3 h-3 rounded-full bg-accent mr-2"></div>
-                                        <span>运动/娱乐</span>
-                                    </div>
-                                    <span id="exerciseTime" class="font-medium">0小时</span>
-                                </div>
-                                <div class="flex items-center justify-between">
-                                    <div class="flex items-center">
-                                        <div class="w-3 h-3 rounded-full bg-neutral mr-2"></div>
-                                        <span>通勤/家务/吃饭</span>
-                                    </div>
-                                    <span id="dailyTasksTime" class="font-medium">0小时</span>
-                                </div>
-                                <div class="border-t border-gray-200 mt-2 pt-2">
-                                    <div class="flex items-center justify-between">
-                                        <span class="font-medium">总计</span>
-                                        <span id="totalTime" class="font-bold">0小时</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
             </div>
             
             <!-- 右侧AI助手面板 -->
@@ -153,6 +106,50 @@
                     </div>
                 </div>
                 
+                <!-- 本周时间分配饼图 -->
+                <div class="mb-6">
+                    <h3 class="text-lg font-medium mb-2 flex items-center">
+                        <i class="fa fa-pie-chart mr-2 text-primary"></i>
+                        本周时间分配
+                    </h3>
+                    <div class="bg-gray-50 rounded-lg p-3">
+                        <canvas id="weeklyChart" height="180"></canvas>
+                        <div class="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-gray-700">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center">
+                                    <div class="w-2.5 h-2.5 rounded-full bg-primary mr-1.5 flex-shrink-0"></div>
+                                    <span>学习/工作</span>
+                                </div>
+                                <span id="studyWorkTime" class="font-semibold ml-1">0h</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center">
+                                    <div class="w-2.5 h-2.5 rounded-full bg-secondary mr-1.5 flex-shrink-0"></div>
+                                    <span>休息</span>
+                                </div>
+                                <span id="restTime" class="font-semibold ml-1">0h</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center">
+                                    <div class="w-2.5 h-2.5 rounded-full bg-accent mr-1.5 flex-shrink-0"></div>
+                                    <span>运动/娱乐</span>
+                                </div>
+                                <span id="exerciseTime" class="font-semibold ml-1">0h</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center">
+                                    <div class="w-2.5 h-2.5 rounded-full bg-neutral mr-1.5 flex-shrink-0"></div>
+                                    <span>家务/通勤</span>
+                                </div>
+                                <span id="dailyTasksTime" class="font-semibold ml-1">0h</span>
+                            </div>
+                        </div>
+                        <div class="border-t border-gray-200 mt-2 pt-2 text-xs text-right text-gray-500">
+                            本周总计：<span id="totalTime" class="font-bold text-gray-700">0h</span>
+                        </div>
+                    </div>
+                </div>
+
                                 <!-- AI计划生成区域 -->
                 <div class="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
                     <h3 class="text-lg font-medium mb-2 flex items-center text-blue-800">
@@ -1083,96 +1080,56 @@
             overlay.onclick = (e) => { if (e.target === overlay) close(); };
             document.getElementById('customAlertOkBtn').onclick = close;
         }
-        // 初始化周统计图表
+        // 初始化周统计图表（甜甜圈饼图）
         function initWeeklyChart() {
             const ctx = document.getElementById('weeklyChart').getContext('2d');
-            
-            // 销毁现有图表（如果存在）
+
             if (weeklyChart) {
                 weeklyChart.destroy();
             }
-            
-            // 获取当前周的日期标签
-            const startOfWeek = getStartOfWeek(currentDate);
-            const labels = [];
-            for (let i = 0; i < 7; i++) {
-                const date = addDays(startOfWeek, i);
-                labels.push(getDayName(date, true));
-            }
-            
-            // 准备数据
-            const datasets = [
-                {
-                    label: '学习/工作',
-                    data: getDailyDataByType('学习/工作'),
-                    backgroundColor: 'rgba(59, 130, 246, 0.8)',
-                    borderColor: 'rgba(59, 130, 246, 0.8)',
-                    borderWidth: 1
-                },
-                {
-                    label: '休息',
-                    data: getDailyDataByType('休息'),
-                    backgroundColor: 'rgba(16, 185, 129, 0.8)',
-                    borderColor: 'rgba(16, 185, 129, 0.8)',
-                    borderWidth: 1
-                },
-                {
-                    label: '运动/娱乐',
-                    data: getDailyDataByType('运动/娱乐'),
-                    backgroundColor: 'rgba(245, 158, 11, 0.8)',
-                    borderColor: 'rgba(245, 158, 11, 0.8)',
-                    borderWidth: 1
-                },
-                {
-                    label: '通勤/家务/吃饭',
-                    data: getDailyDataByType('通勤/家务/吃饭'),
-                    backgroundColor: 'rgba(107, 114, 128, 0.8)',
-                    borderColor: 'rgba(107, 114, 128, 0.8)',
-                    borderWidth: 1
-                }
+
+            const types = ['学习/工作', '休息', '运动/娱乐', '通勤/家务/吃饭'];
+            const colors = [
+                'rgba(59, 130, 246, 0.85)',
+                'rgba(16, 185, 129, 0.85)',
+                'rgba(245, 158, 11, 0.85)',
+                'rgba(107, 114, 128, 0.85)'
             ];
-            
-            // 创建图表
+
+            // 计算本周各类型总分钟数
+            const totals = types.map(type =>
+                getDailyDataByType(type).reduce((sum, v) => sum + v, 0)
+            );
+            const allZero = totals.every(v => v === 0);
+
             weeklyChart = new Chart(ctx, {
-                type: 'bar',
+                type: 'doughnut',
                 data: {
-                    labels: labels,
-                    datasets: datasets
+                    labels: types,
+                    datasets: [{
+                        data: allZero ? [1, 1, 1, 1] : totals,
+                        backgroundColor: allZero
+                            ? ['rgba(200,200,200,0.3)', 'rgba(200,200,200,0.3)', 'rgba(200,200,200,0.3)', 'rgba(200,200,200,0.3)']
+                            : colors,
+                        borderColor: 'white',
+                        borderWidth: 3,
+                        hoverOffset: 6
+                    }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    scales: {
-                        x: {
-                            stacked: true,
-                            grid: {
-                                display: false
-                            }
-                        },
-                        y: {
-                            stacked: true,
-                            title: {
-                                display: true,
-                                text: '时间（小时）'
-                            },
-                            ticks: {
-                                callback: function(value) {
-                                    return Math.round(value / 60);
-                                },
-                                stepSize: 60
-                            }
-                        }
-                    },
+                    cutout: '60%',
                     plugins: {
-                        legend: {
-                            position: 'bottom'
-                        },
+                        legend: { display: false },
                         tooltip: {
+                            enabled: !allZero,
                             callbacks: {
                                 label: function(context) {
-                                    const label = context.dataset.label || '';
                                     const value = context.raw || 0;
-                                    return `${label}: ${(value / 60).toFixed(1)}小时`;
+                                    const h = Math.floor(value / 60);
+                                    const m = value % 60;
+                                    return ` ${context.label}: ${h}h${m > 0 ? m + 'm' : ''}`;
                                 }
                             }
                         }
@@ -1250,13 +1207,14 @@
             });
 
             // 更新统计显示
-            document.getElementById('studyWorkTime').textContent = `${Math.round(timeByType['学习/工作'] / 60)}小时`;
-            document.getElementById('restTime').textContent = `${Math.round(timeByType['休息'] / 60)}小时`;
-            document.getElementById('exerciseTime').textContent = `${Math.round(timeByType['运动/娱乐'] / 60)}小时`;
-            document.getElementById('dailyTasksTime').textContent = `${Math.round(timeByType['通勤/家务/吃饭'] / 60)}小时`;
+            const fmt = m => { const h = Math.floor(m/60); const min = m%60; return min > 0 ? `${h}h${min}m` : `${h}h`; };
+            document.getElementById('studyWorkTime').textContent = fmt(timeByType['学习/工作']);
+            document.getElementById('restTime').textContent = fmt(timeByType['休息']);
+            document.getElementById('exerciseTime').textContent = fmt(timeByType['运动/娱乐']);
+            document.getElementById('dailyTasksTime').textContent = fmt(timeByType['通勤/家务/吃饭']);
 
             const totalTime = Object.values(timeByType).reduce((sum, time) => sum + time, 0);
-            document.getElementById('totalTime').textContent = `${Math.round(totalTime / 60)}小时`;
+            document.getElementById('totalTime').textContent = fmt(totalTime);
 
             // 更新图表
             initWeeklyChart();
