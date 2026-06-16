@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = 'https://schedule-app-production-8f26.up.railway.app';
 
 // 从 localStorage 获取 token
 function getAuthToken() {

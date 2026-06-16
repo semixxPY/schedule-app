@@ -4,7 +4,7 @@ window.aiService = {
         // 现在主要通过后端 /api/ai/chat 接口调用AI
         try {
             const response = await fetch(
-                'http://localhost:8000/api/ai/chat?message=' + encodeURIComponent(message),
+                'https://schedule-app-production-8f26.up.railway.app/api/ai/chat?message=' + encodeURIComponent(message),
                 { method: 'POST' }
             );
             const data = await response.json();
