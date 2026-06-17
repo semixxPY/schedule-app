@@ -482,8 +482,20 @@
             setupEventListeners();
             setupReminder();
 
-            // 每分钟刷新一次日历，让过期的计划活动自动消失
-            setInterval(() => { renderCalendar(); }, 60 * 1000);
+            // 每分钟清理后端过期计划并刷新日历
+            setInterval(async () => {
+                try {
+                    const token = localStorage.getItem('userToken');
+                    await fetch('https://schedule-app-production-8f26.up.railway.app/api/ai/clean-expired-plans', {
+                        method: 'POST',
+                        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+                    });
+                    await loadActivities();
+                } catch (e) {
+                    console.log('定时清理过期计划失败', e);
+                }
+                renderCalendar();
+            }, 60 * 1000);
         }
 
         document.addEventListener('DOMContentLoaded', async function() {
