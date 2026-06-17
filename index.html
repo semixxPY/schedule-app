@@ -481,6 +481,9 @@
             updateAISummary();
             setupEventListeners();
             setupReminder();
+
+            // 每分钟刷新一次日历，让过期的计划活动自动消失
+            setInterval(() => { renderCalendar(); }, 60 * 1000);
         }
 
         document.addEventListener('DOMContentLoaded', async function() {
@@ -591,11 +594,18 @@
             });
             
             // 渲染每个活动
+            const now = new Date();
             weeklyActivities.forEach(activity => {
+                // 跳过已过时间且未确认的计划活动
+                if (activity.isPlan) {
+                    const endDateTime = new Date(`${activity.date}T${activity.endTime}`);
+                    if (endDateTime <= now) return;
+                }
+
                 const activityElement = createActivityElement(activity);
                 const startHour = getHourFromTime(activity.startTime);
                 const cell = document.querySelector(`.calendar-cell[data-date="${activity.date}"][data-hour="${startHour}"]`);
-                
+
                 if (cell) {
                     cell.appendChild(activityElement);
                 }
