@@ -1,6 +1,8 @@
 from fastapi import FastAPI, Depends, HTTPException, Security
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from pydantic import BaseModel
+from typing import Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from datetime import datetime, timedelta
@@ -569,13 +571,18 @@ def confirm_activity(activity_id: str, db: Session = Depends(get_db), current_us
 
 
 # ============ 自动清理过期计划接口（加载页面时调用）============
+class CleanExpiredPlansRequest(BaseModel):
+    current_date: Optional[str] = None  # YYYY-MM-DD，客户端本地日期
+    current_time: Optional[str] = None  # HH:MM，客户端本地时间
+
 @app.post("/api/ai/clean-expired-plans")
-def clean_expired_plans(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+def clean_expired_plans(request: CleanExpiredPlansRequest = CleanExpiredPlansRequest(), db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     from datetime import datetime
 
     now = datetime.now()
-    today_str = now.strftime('%Y-%m-%d')
-    current_time = now.strftime('%H:%M')
+    # 优先使用客户端传来的本地时间（解决服务器时区与用户时区不一致的问题）
+    today_str = request.current_date or now.strftime('%Y-%m-%d')
+    current_time = request.current_time or now.strftime('%H:%M')
 
     plan_activities = db.query(models.Activity).filter(models.Activity.user_id == current_user.id, models.Activity.is_plan == True).all()
     

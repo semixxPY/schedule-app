@@ -466,9 +466,14 @@
 
             try {
                 const token = localStorage.getItem('userToken');
+                const _initNow = new Date();
                 await fetch('https://schedule-app-production-8f26.up.railway.app/api/ai/clean-expired-plans', {
                     method: 'POST',
-                    headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+                    headers: { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) },
+                    body: JSON.stringify({
+                        current_date: formatDate(_initNow),
+                        current_time: `${_initNow.getHours().toString().padStart(2,'0')}:${_initNow.getMinutes().toString().padStart(2,'0')}`
+                    })
                 });
                 await loadActivities();
             } catch (error) {
@@ -486,9 +491,14 @@
             setInterval(async () => {
                 try {
                     const token = localStorage.getItem('userToken');
+                    const _now = new Date();
                     await fetch('https://schedule-app-production-8f26.up.railway.app/api/ai/clean-expired-plans', {
                         method: 'POST',
-                        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+                        headers: { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) },
+                        body: JSON.stringify({
+                            current_date: formatDate(_now),
+                            current_time: `${_now.getHours().toString().padStart(2,'0')}:${_now.getMinutes().toString().padStart(2,'0')}`
+                        })
                     });
                     await loadActivities();
                 } catch (e) {
